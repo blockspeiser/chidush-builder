@@ -1,0 +1,1256 @@
+import {
+  ComposerPrimitive,
+  MessagePrimitive,
+  ThreadPrimitive,
+  useMessage,
+  type TextContentPartComponent,
+  type ToolCallContentPartComponent,
+} from "@assistant-ui/react";
+import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from "react";
+import ReactMarkdown from "react-markdown";
+import { TextBlock } from "sefaria-ui-components";
+
+type SefariaData = Parameters<typeof TextBlock>[0]["sefariaData"];
+
+function useSefariaText(ref: string): {
+  data: SefariaData | null;
+  error: string | null;
+} {
+  const [data, setData] = useState<SefariaData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ref) {
+      setData(null);
+      setError(null);
+      return;
+    }
+    let cancelled = false;
+    setData(null);
+    setError(null);
+    fetch(`/sefaria-api/texts/${encodeURIComponent(ref)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`texts ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (cancelled) return;
+        // When sections is shallower than textDepth, the API has already scoped
+        // text to the requested leaf (e.g. all sub-comments on a verse).
+        // TextBlock's slicer doesn't know this and would slice by section index,
+        // returning an empty array. Drop sections so it renders everything.
+        const sections = (d as { sections?: unknown }).sections;
+        const textDepth = (d as { textDepth?: unknown }).textDepth;
+        if (
+          Array.isArray(sections) &&
+          typeof textDepth === "number" &&
+          sections.length < textDepth
+        ) {
+          const fixed = { ...(d as object) } as Record<string, unknown>;
+          delete fixed.sections;
+          delete fixed.toSections;
+          setData(fixed as SefariaData);
+          return;
+        }
+        setData(d as SefariaData);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ref]);
+
+  return { data, error };
+}
+
+const SefariaTextBlock = ({ sefRef }: { sefRef: string }) => {
+  const { data, error } = useSefariaText(sefRef);
+  if (error) {
+    return (
+      <div className="my-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+        Could not load <span className="font-medium">{sefRef}</span>: {error}
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="my-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-500">
+        Loading <span className="font-medium">{sefRef}</span>…
+      </div>
+    );
+  }
+  return (
+    <div style={{ zoom: 0.88 }}>
+      <TextBlock sefRef={sefRef} sefariaData={data} showFollowup={false} />
+    </div>
+  );
+};
+import type {
+  NarrativeSheet,
+  PoemSheet,
+  SourceSheet,
+  SourceSheetItem,
+} from "./sourceSheet";
+
+const tokenSetForDiff = (s: string): Set<string> => {
+  const normalized = s
+    .toLowerCase()
+    .replace(/\*\*/g, "")
+    .replace(/[*_~`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return new Set(
+    normalized
+      .split(/[^a-z0-9֐-׿]+/)
+      .filter((t) => t.length > 2),
+  );
+};
+
+const flashAnimation = (el: Element) => {
+  (el as HTMLElement).animate(
+    [
+      { backgroundColor: "oklch(0.9 0.07 240 / 0.7)" },
+      { backgroundColor: "transparent" },
+    ],
+    { duration: 3000, easing: "ease-out", fill: "forwards" },
+  );
+};
+
+// Smart scroll-into-view for the source-sheet panel.
+// Default: center the element in the scroll container.
+// If the element is taller than the container: align its top with the container top.
+const smartScrollIntoView = (
+  el: HTMLElement,
+  scrollContainer: HTMLElement,
+  label?: string,
+) => {
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const containerHeight = scrollContainer.clientHeight;
+  const elHeight = elRect.height;
+  const elTopInContent =
+    elRect.top - containerRect.top + scrollContainer.scrollTop;
+
+  let target: number;
+  if (elHeight >= containerHeight) {
+    target = elTopInContent;
+  } else {
+    target = elTopInContent - (containerHeight - elHeight) / 2;
+  }
+  const max = scrollContainer.scrollHeight - containerHeight;
+  target = Math.max(0, Math.min(max, target));
+
+  console.log("[smartScrollIntoView]", {
+    label,
+    elHeight,
+    containerHeight,
+    elTopInContent,
+    target,
+    currentScroll: scrollContainer.scrollTop,
+  });
+
+  scrollContainer.scrollTo({ top: target, behavior: "smooth" });
+};
+
+const inlineMarkdownComponents = {
+  p: ({ children }: ComponentPropsWithoutRef<"p">) => <>{children}</>,
+  strong: (props: ComponentPropsWithoutRef<"strong">) => (
+    <strong className="font-semibold text-stone-900" {...props} />
+  ),
+  em: (props: ComponentPropsWithoutRef<"em">) => (
+    <em className="italic" {...props} />
+  ),
+  code: (props: ComponentPropsWithoutRef<"code">) => (
+    <code
+      className="rounded bg-stone-100 px-1 py-0.5 font-mono text-base"
+      {...props}
+    />
+  ),
+  a: (props: ComponentPropsWithoutRef<"a">) => (
+    <a className="text-amber-700 underline" {...props} />
+  ),
+};
+
+const markdownComponents = {
+  p: (props: ComponentPropsWithoutRef<"p">) => (
+    <p className="my-2 first:mt-0 last:mb-0" {...props} />
+  ),
+  strong: (props: ComponentPropsWithoutRef<"strong">) => (
+    <strong className="font-semibold text-stone-900" {...props} />
+  ),
+  em: (props: ComponentPropsWithoutRef<"em">) => (
+    <em className="italic" {...props} />
+  ),
+  ul: (props: ComponentPropsWithoutRef<"ul">) => (
+    <ul className="my-2 list-disc space-y-1 pl-6" {...props} />
+  ),
+  ol: (props: ComponentPropsWithoutRef<"ol">) => (
+    <ol className="my-2 list-decimal space-y-1 pl-6" {...props} />
+  ),
+  li: (props: ComponentPropsWithoutRef<"li">) => <li {...props} />,
+  h1: (props: ComponentPropsWithoutRef<"h1">) => (
+    <h1 className="mt-3 mb-2 text-2xl font-semibold text-stone-800" {...props} />
+  ),
+  h2: (props: ComponentPropsWithoutRef<"h2">) => (
+    <h2 className="mt-3 mb-2 text-xl font-semibold text-stone-800" {...props} />
+  ),
+  h3: (props: ComponentPropsWithoutRef<"h3">) => (
+    <h3 className="mt-2 mb-1 text-lg font-semibold text-stone-800" {...props} />
+  ),
+  blockquote: (props: ComponentPropsWithoutRef<"blockquote">) => (
+    <blockquote
+      className="my-2 border-l-2 border-stone-300 pl-3 text-stone-700 italic"
+      {...props}
+    />
+  ),
+  a: (props: ComponentPropsWithoutRef<"a">) => (
+    <a className="text-amber-700 underline" {...props} />
+  ),
+  code: (props: ComponentPropsWithoutRef<"code">) => (
+    <code
+      className="rounded bg-stone-100 px-1 py-0.5 font-mono text-base"
+      {...props}
+    />
+  ),
+};
+
+const TextPart: TextContentPartComponent = () => (
+  <MarkdownTextPrimitive components={markdownComponents} />
+);
+
+const ShowTextToolPart: ToolCallContentPartComponent = ({ args, toolName }) => {
+  console.log("[ShowTextToolPart]", { toolName, args });
+  const reference =
+    typeof (args as { reference?: unknown })?.reference === "string"
+      ? (args as { reference: string }).reference
+      : "";
+
+  if (!reference) {
+    return (
+      <div className="my-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-500">
+        Loading text…
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 mb-[42px]">
+      <SefariaTextBlock sefRef={reference} />
+    </div>
+  );
+};
+
+const TextSearchToolPart: ToolCallContentPartComponent = ({ toolCallId }) => {
+  const content = useMessage((s) => s.content);
+  const searches = content.flatMap((p) => {
+    if (p.type !== "tool-call" || p.toolName !== "text_search") return [];
+    const query =
+      typeof (p.args as { query?: unknown })?.query === "string"
+        ? ((p.args as { query: string }).query)
+        : "";
+    return [
+      {
+        toolCallId: p.toolCallId,
+        query,
+        done: p.result !== undefined,
+        resultCount: Array.isArray(p.result) ? p.result.length : 0,
+      },
+    ];
+  });
+
+  if (searches.length === 0 || searches[0].toolCallId !== toolCallId) {
+    return null;
+  }
+
+  const pending = searches.filter((s) => !s.done);
+  if (pending.length > 0) {
+    const queries = pending.map((s) => s.query).filter(Boolean).join(", ");
+    return (
+      <div
+        dir="ltr"
+        className="my-3 flex items-center gap-3 text-base text-stone-500"
+      >
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600" />
+        <span>
+          Searching
+          {queries ? (
+            <>
+              :{" "}
+              <bdi style={{ unicodeBidi: "isolate" }}>{queries}</bdi>
+            </>
+          ) : (
+            "…"
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  const total = searches.reduce((sum, s) => sum + s.resultCount, 0);
+  return (
+    <div dir="ltr" className="my-3 text-base text-stone-500">
+      Found {total} source{total === 1 ? "" : "s"}.
+    </div>
+  );
+};
+
+const HiddenToolPart: ToolCallContentPartComponent = () => null;
+
+const UserMessage = () => {
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+  return (
+    <div ref={rootRef}>
+      <MessagePrimitive.Root className="grid grid-cols-[1fr_auto] gap-x-3 py-3">
+        <div className="col-start-2 max-w-[80ch] rounded-2xl bg-[#f7f1de] px-4 py-2 text-stone-900">
+          <MessagePrimitive.Parts components={{ Text: TextPart }} />
+        </div>
+      </MessagePrimitive.Root>
+    </div>
+  );
+};
+
+const findScrollableAncestor = (el: HTMLElement): HTMLElement | null => {
+  let current: HTMLElement | null = el.parentElement;
+  while (current) {
+    const overflow = getComputedStyle(current).overflowY;
+    if (overflow === "auto" || overflow === "scroll") return current;
+    current = current.parentElement;
+  }
+  return null;
+};
+
+const AssistantMessage = () => {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const scrollEl = findScrollableAncestor(el);
+    if (!scrollEl) return;
+
+    let frozen = false;
+    const observer = new ResizeObserver(() => {
+      if (frozen) return;
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const topInViewport = elRect.top - scrollRect.top;
+      const stopThreshold = scrollRect.height / 3;
+
+      if (topInViewport <= stopThreshold) {
+        frozen = true;
+        return;
+      }
+
+      const tailBelowViewport = elRect.bottom - scrollRect.bottom;
+      if (tailBelowViewport <= 0) return;
+
+      const maxAllowedScroll = topInViewport - stopThreshold;
+      const delta = Math.min(tailBelowViewport, maxAllowedScroll);
+      if (delta > 0) {
+        scrollEl.scrollTop += delta;
+      }
+      if (delta >= maxAllowedScroll) {
+        frozen = true;
+      }
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={rootRef}>
+      <MessagePrimitive.Root className="grid grid-cols-[auto_1fr] gap-x-3 py-3">
+        <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-amber-800 text-center text-base font-semibold leading-8 text-amber-50">
+          ח
+        </div>
+        <div className="max-w-[80ch] text-stone-900">
+          <MessagePrimitive.Parts
+            components={{
+              Text: TextPart,
+              tools: {
+                by_name: {
+                  show_text: ShowTextToolPart,
+                  text_search: TextSearchToolPart,
+                },
+                Fallback: HiddenToolPart,
+              },
+            }}
+          />
+        </div>
+      </MessagePrimitive.Root>
+    </div>
+  );
+};
+
+const SheetItem = ({ item }: { item: SourceSheetItem }) => {
+  if (item.type === "citation") {
+    return (
+      <SefariaTextBlock sefRef={item.reference} />
+    );
+  }
+  return (
+    <section className="space-y-3">
+      <h3 className="text-lg font-semibold text-stone-800">
+        {item.heading}
+      </h3>
+      {item.bullets && item.bullets.length > 0 && (
+        <ul className="list-disc space-y-1.5 pl-6 text-lg leading-relaxed text-stone-800">
+          {item.bullets.map((b, i) => (
+            <li
+              key={i}
+              data-bullet-idx={i}
+              className="rounded -mx-1 px-1"
+            >
+              <ReactMarkdown components={inlineMarkdownComponents}>
+                {b}
+              </ReactMarkdown>
+            </li>
+          ))}
+        </ul>
+      )}
+      {item.paragraphs?.map((p, i) => (
+        <div
+          key={i}
+          data-paragraph-idx={i}
+          className="rounded -mx-1 px-1 text-lg leading-relaxed text-stone-800 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+        >
+          <ReactMarkdown components={markdownComponents}>{p}</ReactMarkdown>
+        </div>
+      ))}
+    </section>
+  );
+};
+
+type SheetView = "narrative" | "notes" | "poem";
+
+const SheetToggle = ({
+  view,
+  onChange,
+  hasPoem,
+}: {
+  view: SheetView;
+  onChange: (v: SheetView) => void;
+  hasPoem: boolean;
+}) => {
+  const btn = (target: SheetView, label: string) => (
+    <button
+      type="button"
+      onClick={() => onChange(target)}
+      className={`rounded px-3 py-1 transition ${
+        view === target
+          ? "bg-white text-stone-900 shadow-sm"
+          : "text-stone-500 hover:text-stone-700"
+      }`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="inline-flex items-center rounded-md border border-stone-200 bg-stone-50 p-0.5 text-sm">
+      {btn("narrative", "Narrative")}
+      {btn("notes", "Notes")}
+      {hasPoem && btn("poem", "Poem")}
+    </div>
+  );
+};
+
+const NarrativeView = ({ narrative }: { narrative: NarrativeSheet }) => (
+  <>
+    {narrative.items.length === 0 ? (
+      <div className="text-center text-lg leading-relaxed text-stone-400 italic">
+        The narrative is being drafted…
+      </div>
+    ) : (
+      narrative.items.map((item, i) =>
+        item.type === "citation" ? (
+          <SefariaTextBlock key={i} sefRef={item.reference} />
+        ) : (
+          <div
+            key={i}
+            className="text-lg leading-relaxed text-stone-800 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+          >
+            <ReactMarkdown components={markdownComponents}>
+              {item.markdown}
+            </ReactMarkdown>
+          </div>
+        ),
+      )
+    )}
+  </>
+);
+
+const PoemView = ({ poem }: { poem: PoemSheet }) => (
+  <div className="text-lg leading-relaxed whitespace-pre-line text-stone-800 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+    {poem.markdown ? (
+      <ReactMarkdown components={markdownComponents}>
+        {poem.markdown}
+      </ReactMarkdown>
+    ) : (
+      <div className="text-center text-stone-400 italic">
+        The poem is being drafted…
+      </div>
+    )}
+  </div>
+);
+
+const SourceSheetPanel = ({
+  sheet,
+  narrative,
+  poem,
+}: {
+  sheet: SourceSheet;
+  narrative: NarrativeSheet | null;
+  poem: PoemSheet | null;
+}) => {
+  const hasNarrative =
+    narrative !== null &&
+    (narrative.items.length > 0 || (narrative.title ?? "").length > 0);
+  const hasPoem =
+    poem !== null && (poem.markdown.length > 0 || (poem.title ?? "").length > 0);
+  const [view, setView] = useState<SheetView>("notes");
+  const prevHasNarrativeRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hasNarrative && !prevHasNarrativeRef.current) {
+      setView("narrative");
+    }
+    if (!hasNarrative && view === "narrative") {
+      setView("notes");
+    }
+    if (!hasPoem && view === "poem") {
+      setView(hasNarrative ? "narrative" : "notes");
+    }
+    prevHasNarrativeRef.current = hasNarrative;
+  }, [hasNarrative, hasPoem, view]);
+
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [view]);
+
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const prevItemsRef = useRef<SourceSheetItem[]>([]);
+
+  useEffect(() => {
+    const prevCitations = new Set(
+      prevItemsRef.current
+        .filter((i): i is Extract<SourceSheetItem, { type: "citation" }> =>
+          i.type === "citation",
+        )
+        .map((i) => i.reference),
+    );
+
+    // Pool ALL previous bullets/paragraphs across sections so a bullet
+    // that moved (or whose section was renamed) is still recognized.
+    const prevBulletsAll: string[] = [];
+    const prevParagraphsAll: string[] = [];
+    for (const item of prevItemsRef.current) {
+      if (item.type === "notes") {
+        prevBulletsAll.push(...(item.bullets ?? []));
+        prevParagraphsAll.push(...(item.paragraphs ?? []));
+      }
+    }
+    const prevBulletTokens = prevBulletsAll.map(tokenSetForDiff);
+    const prevParagraphTokens = prevParagraphsAll.map(tokenSetForDiff);
+
+    const isCarriedOver = (
+      text: string,
+      prevTexts: string[],
+      prevTokens: Set<string>[],
+    ): boolean => {
+      if (prevTexts.includes(text)) return true;
+      const tokens = tokenSetForDiff(text);
+      if (tokens.size === 0) return false;
+      for (const other of prevTokens) {
+        if (other.size === 0) continue;
+        let overlap = 0;
+        for (const t of tokens) if (other.has(t)) overlap++;
+        const ratio = overlap / Math.min(tokens.size, other.size);
+        if (ratio >= 0.5) return true;
+      }
+      return false;
+    };
+
+    const newCitationIndices: number[] = [];
+    type SectionChange = {
+      sectionIdx: number;
+      newBullets: number[];
+      newParagraphs: number[];
+    };
+    const sectionChanges: SectionChange[] = [];
+
+    sheet.items.forEach((item, idx) => {
+      if (item.type === "citation") {
+        if (!prevCitations.has(item.reference)) newCitationIndices.push(idx);
+        return;
+      }
+      const newBullets: number[] = [];
+      const newParagraphs: number[] = [];
+      (item.bullets ?? []).forEach((b, i) => {
+        if (!isCarriedOver(b, prevBulletsAll, prevBulletTokens)) {
+          newBullets.push(i);
+        }
+      });
+      (item.paragraphs ?? []).forEach((p, i) => {
+        if (!isCarriedOver(p, prevParagraphsAll, prevParagraphTokens)) {
+          newParagraphs.push(i);
+        }
+      });
+      if (newBullets.length > 0 || newParagraphs.length > 0) {
+        sectionChanges.push({ sectionIdx: idx, newBullets, newParagraphs });
+      }
+    });
+
+    console.log("[SourceSheetPanel] diff", {
+      view,
+      itemCount: sheet.items.length,
+      newCitationIndices,
+      sectionChanges,
+    });
+
+    const cleanupFns: Array<() => void> = [];
+
+    if (view === "notes") {
+      const container = scrollContainerRef.current;
+      // Scroll target
+      if (newCitationIndices.length > 0 && container) {
+        const idx = newCitationIndices[0];
+        const el = itemRefs.current[idx];
+        console.log("[SourceSheetPanel] scrolling to new citation", {
+          idx,
+          el,
+          container,
+        });
+        if (el) {
+          smartScrollIntoView(el, container, `citation #${idx}`);
+          // Citations fetch their text async — re-scroll as TextBlock loads.
+          const observer = new ResizeObserver(() => {
+            smartScrollIntoView(el, container, `citation #${idx} (resized)`);
+          });
+          observer.observe(el);
+          const timeout = window.setTimeout(
+            () => observer.disconnect(),
+            3000,
+          );
+          cleanupFns.push(() => {
+            observer.disconnect();
+            window.clearTimeout(timeout);
+          });
+        }
+      } else if (sectionChanges.length > 0 && container) {
+        const { sectionIdx, newBullets, newParagraphs } = sectionChanges[0];
+        const sectionEl = itemRefs.current[sectionIdx];
+        let target: HTMLElement | null = sectionEl;
+        if (sectionEl && newBullets.length > 0) {
+          target =
+            (sectionEl.querySelector(
+              `[data-bullet-idx="${newBullets[0]}"]`,
+            ) as HTMLElement | null) ?? sectionEl;
+        } else if (sectionEl && newParagraphs.length > 0) {
+          target =
+            (sectionEl.querySelector(
+              `[data-paragraph-idx="${newParagraphs[0]}"]`,
+            ) as HTMLElement | null) ?? sectionEl;
+        }
+        console.log("[SourceSheetPanel] scrolling to changed section", {
+          sectionIdx,
+          target,
+        });
+        if (target) smartScrollIntoView(target, container, `notes change`);
+      }
+
+      // Animate granular changes (citations get no flash, just the scroll)
+      for (const { sectionIdx, newBullets, newParagraphs } of sectionChanges) {
+        const sectionEl = itemRefs.current[sectionIdx];
+        if (!sectionEl) continue;
+        for (const i of newBullets) {
+          const el = sectionEl.querySelector(`[data-bullet-idx="${i}"]`);
+          if (el) flashAnimation(el);
+        }
+        for (const i of newParagraphs) {
+          const el = sectionEl.querySelector(`[data-paragraph-idx="${i}"]`);
+          if (el) flashAnimation(el);
+        }
+      }
+    }
+
+    prevItemsRef.current = sheet.items;
+
+    return () => {
+      for (const fn of cleanupFns) fn();
+    };
+  }, [sheet, view]);
+
+  return (
+    <aside className="flex min-h-0 flex-col pt-3 pr-16 pb-8 pl-8">
+      <div
+        ref={scrollContainerRef}
+        className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto rounded-sm bg-white shadow-[0_2px_12px_rgba(60,40,10,0.06)] ring-1 ring-black/5"
+      >
+        <div className="space-y-8 px-12 pt-8 pb-14">
+          {(() => {
+            const currentTitle =
+              view === "narrative" && narrative
+                ? narrative.title
+                : view === "poem" && poem
+                  ? poem.title
+                  : sheet.title;
+            if (!currentTitle && !hasNarrative) return null;
+            return (
+              <div className="flex items-baseline justify-between gap-4">
+                {currentTitle ? (
+                  <h2 className="text-2xl font-semibold text-stone-900">
+                    {currentTitle}
+                  </h2>
+                ) : (
+                  <div />
+                )}
+                {hasNarrative && (
+                  <SheetToggle
+                    view={view}
+                    onChange={setView}
+                    hasPoem={hasPoem}
+                  />
+                )}
+              </div>
+            );
+          })()}
+          {view === "narrative" && narrative ? (
+            <NarrativeView narrative={narrative} />
+          ) : view === "poem" && poem ? (
+            <PoemView poem={poem} />
+          ) : (
+            <>
+              {sheet.items.length === 0 ? (
+                <div className="mt-3 text-center text-lg leading-relaxed text-stone-400 italic">
+                  Your source sheet will take shape here as you learn.
+                </div>
+              ) : (
+                sheet.items.map((item, i) => (
+                  <div
+                    key={i}
+                    ref={(el) => {
+                      itemRefs.current[i] = el;
+                    }}
+                    className="-mx-3 rounded-md px-3"
+                  >
+                    <SheetItem item={item} />
+                  </div>
+                ))
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+const PHASE_LABELS = [
+  "Choose a text",
+  "Uncover questions",
+  "Add a new perspective",
+  "Grapple and connect",
+  "Weigh answers",
+  "Draft your chidush",
+];
+
+const PhaseIndicator = ({ phase }: { phase: number }) => {
+  const total = 6;
+  const elements: JSX.Element[] = [];
+  for (let step = 1; step <= total; step++) {
+    if (step > 1) {
+      const lineColor =
+        step < phase
+          ? "bg-[#b89476]"
+          : step === phase
+            ? "bg-[#e8c8a4]"
+            : "bg-stone-200";
+      elements.push(
+        <div
+          key={`line-${step}`}
+          className={`w-0.5 flex-1 min-h-4 ${lineColor}`}
+        />,
+      );
+    }
+    const dotColor =
+      step < phase
+        ? "bg-[#b89476]"
+        : step === phase
+          ? "bg-[#e8c8a4]"
+          : "bg-stone-200";
+    elements.push(
+      <div
+        key={`dot-${step}`}
+        className="group relative h-3 w-3 shrink-0"
+      >
+        <div className={`h-full w-full rounded-full ${dotColor}`} />
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#f7f1de] px-2.5 py-1.5 text-sm font-medium text-stone-800 opacity-0 shadow-sm ring-1 ring-stone-300/60 transition-opacity duration-150 group-hover:opacity-100"
+        >
+          {PHASE_LABELS[step - 1]}
+        </span>
+      </div>,
+    );
+  }
+  return (
+    <div className="flex h-full min-h-0 flex-col items-center px-4 pt-[62px] pb-[82px]">
+      {elements}
+    </div>
+  );
+};
+
+// Top ~100 most popular Google Fonts serifs (incl. slab, display, blackletter).
+const POPULAR_FONTS = [
+  "Playfair Display",
+  "Merriweather",
+  "Roboto Slab",
+  "Lora",
+  "PT Serif",
+  "EB Garamond",
+  "Libre Baskerville",
+  "Crimson Text",
+  "Source Serif 4",
+  "Bitter",
+  "Inria Serif",
+  "Slabo 27px",
+  "Spectral",
+  "Vollkorn",
+  "Cardo",
+  "Cinzel",
+  "Domine",
+  "Bree Serif",
+  "Old Standard TT",
+  "Fraunces",
+  "Newsreader",
+  "DM Serif Display",
+  "DM Serif Text",
+  "Bodoni Moda",
+  "Yeseva One",
+  "Crimson Pro",
+  "Cormorant",
+  "Cormorant Garamond",
+  "Cormorant Infant",
+  "Cormorant SC",
+  "Tinos",
+  "Noto Serif",
+  "Noto Serif Display",
+  "Libre Caslon Text",
+  "Libre Caslon Display",
+  "Marcellus",
+  "Marcellus SC",
+  "Abril Fatface",
+  "Alegreya",
+  "Alegreya SC",
+  "Italiana",
+  "Vidaloka",
+  "Limelight",
+  "Forum",
+  "Bevan",
+  "Della Respira",
+  "Krona One",
+  "Aboreto",
+  "Karantina",
+  "Holtwood One SC",
+  "Stardos Stencil",
+  "Bona Nova",
+  "Ribeye",
+  "Almendra Display",
+  "Almendra",
+  "UnifrakturMaguntia",
+  "Pirata One",
+  "MedievalSharp",
+  "Special Elite",
+  "Henny Penny",
+  "Kavoon",
+  "Glegoo",
+  "Eczar",
+  "Suranna",
+  "Lustria",
+  "Rufina",
+  "Ledger",
+  "Frank Ruhl Libre",
+  "Maitree",
+  "Petrona",
+  "Yrsa",
+  "Texturina",
+  "Imbue",
+  "Gloock",
+  "Sansita",
+  "Sansita Swashed",
+  "Marko One",
+  "IM Fell DW Pica",
+  "IM Fell English",
+  "IM Fell Double Pica",
+  "Buenard",
+  "Voltaire",
+  "Caudex",
+  "Sancreek",
+  "Cutive",
+  "Quintessential",
+  "Sirin Stencil",
+  "Stoke",
+  "Pridi",
+  "Sumana",
+  "Asar",
+  "Trirong",
+  "Linden Hill",
+  "Antic Slab",
+  "Berkshire Swash",
+  "Macondo",
+  "Spectral SC",
+  "Esteban",
+  "Yatra One",
+  "Cherry Swash",
+  "Aleo",
+  "Crete Round",
+];
+
+function fontStack(name: string) {
+  return `"${name}", serif`;
+}
+
+const loadedFonts = new Set<string>();
+function loadFont(name: string) {
+  if (loadedFonts.has(name)) return;
+  loadedFonts.add(name);
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
+    name,
+  ).replace(/%20/g, "+")}&display=swap`;
+  document.head.appendChild(link);
+}
+
+const loadedFontWeights = new Set<string>();
+function loadFontWeight(name: string, weight: number) {
+  const key = `${name}@${weight}`;
+  if (loadedFontWeights.has(key)) return;
+  loadedFontWeights.add(key);
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
+    name,
+  ).replace(/%20/g, "+")}:wght@${weight}&display=swap`;
+  link.onerror = () => {
+    link.remove();
+    loadedFontWeights.delete(key);
+  };
+  document.head.appendChild(link);
+}
+
+const FONT_WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+
+export function Thread({
+  sheet,
+  narrative,
+  poem,
+  phase,
+  headerRight,
+}: {
+  sheet: SourceSheet;
+  narrative: NarrativeSheet | null;
+  poem: PoemSheet | null;
+  phase: number;
+  headerRight?: ReactNode;
+}) {
+  const [fontName, setFontName] = useState<string>("EB Garamond");
+  const [titleSize, setTitleSize] = useState<number>(26);
+  const [titleWeight, setTitleWeight] = useState<number>(400);
+  const [titleAccent, setTitleAccent] = useState<boolean>(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [logotypeMenuUnlocked, setLogotypeMenuUnlocked] = useState(false);
+  const logoClickCountRef = useRef(0);
+  const logoClickTimeoutRef = useRef<number | null>(null);
+  const handleLogoClick = () => {
+    if (logoClickTimeoutRef.current !== null) {
+      window.clearTimeout(logoClickTimeoutRef.current);
+    }
+    logoClickCountRef.current += 1;
+    if (logoClickCountRef.current >= 5) {
+      setLogotypeMenuUnlocked(true);
+      logoClickCountRef.current = 0;
+      logoClickTimeoutRef.current = null;
+      return;
+    }
+    logoClickTimeoutRef.current = window.setTimeout(() => {
+      logoClickCountRef.current = 0;
+      logoClickTimeoutRef.current = null;
+    }, 1500);
+  };
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      for (const n of POPULAR_FONTS) loadFont(n);
+    }
+  }, [menuOpen]);
+
+  useEffect(() => {
+    loadFont(fontName);
+    for (const w of FONT_WEIGHTS) loadFontWeight(fontName, w);
+  }, [fontName]);
+
+  const fontFamily = fontStack(fontName);
+  const subtitleSize = Math.max(13, Math.round(titleSize * 0.65));
+
+  return (
+    <ThreadPrimitive.Root className="flex h-screen flex-col bg-[#fdfaf2]">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#fdfaf2] pt-6 pb-3">
+        <div className="pr-8 pl-16">
+          <div className="mx-auto flex max-w-3xl items-baseline gap-3">
+            <h1
+              className="leading-tight select-none"
+              onClick={handleLogoClick}
+              style={{
+                fontFamily,
+                fontSize: `${titleSize}px`,
+                fontWeight: titleWeight,
+                letterSpacing: "0.04em",
+                color: titleAccent
+                  ? "oklch(0.473 0.137 46.201)"
+                  : "var(--color-stone-800)",
+                cursor: "default",
+              }}
+            >
+              Chidush Builder
+            </h1>
+            <p
+              className="text-stone-500"
+              style={{ fontFamily, fontSize: `${subtitleSize}px` }}
+            >
+              Guided, interactive, generative Torah learning
+            </p>
+          </div>
+        </div>
+        <div />
+        <div ref={menuRef} className="relative flex items-center justify-end gap-2 pr-16">
+          {headerRight}
+          {logotypeMenuUnlocked && (<>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
+          >
+            <span style={{ fontFamily }}>{fontName}</span>
+            <span className="text-stone-400">
+              · {titleSize}px · {titleWeight}
+            </span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              aria-hidden="true"
+              className="text-stone-400"
+            >
+              <path
+                d="M3 4.5 L6 7.5 L9 4.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          {menuOpen && (
+            <div className="absolute top-full right-16 z-50 mt-2 w-72 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
+              <div className="border-b border-stone-200 bg-stone-50">
+                <div className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="text-xs font-medium text-stone-500 uppercase">
+                    Size
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTitleSize((s) => Math.max(10, s - 2))}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                      aria-label="Decrease size"
+                    >
+                      −
+                    </button>
+                    <span className="w-10 text-center font-mono text-sm text-stone-700 tabular-nums">
+                      {titleSize}px
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTitleSize((s) => Math.min(96, s + 2))}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                      aria-label="Increase size"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 px-3 pt-1 pb-2">
+                  <span className="text-xs font-medium text-stone-500 uppercase">
+                    Weight
+                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-1">
+                    {FONT_WEIGHTS.map((w) => (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => setTitleWeight(w)}
+                        className={`flex h-6 w-7 items-center justify-center rounded border text-xs tabular-nums ${
+                          titleWeight === w
+                            ? "border-amber-700 bg-amber-50 text-stone-800"
+                            : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
+                        }`}
+                        style={{ fontWeight: w }}
+                        aria-label={`Weight ${w}`}
+                      >
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 px-3 pt-1 pb-2">
+                  <span className="text-xs font-medium text-stone-500 uppercase">
+                    Color
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setTitleAccent(false)}
+                      className={`flex h-6 items-center gap-1.5 rounded border px-2 text-xs ${
+                        !titleAccent
+                          ? "border-amber-700 bg-amber-50 text-stone-800"
+                          : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
+                      }`}
+                      aria-pressed={!titleAccent}
+                    >
+                      <span
+                        className="inline-block h-3 w-3 rounded-full"
+                        style={{ background: "var(--color-stone-800)" }}
+                      />
+                      Black
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTitleAccent(true)}
+                      className={`flex h-6 items-center gap-1.5 rounded border px-2 text-xs ${
+                        titleAccent
+                          ? "border-amber-700 bg-amber-50 text-stone-800"
+                          : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
+                      }`}
+                      aria-pressed={titleAccent}
+                    >
+                      <span
+                        className="inline-block h-3 w-3 rounded-full"
+                        style={{ background: "oklch(0.473 0.137 46.201)" }}
+                      />
+                      Accent
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="max-h-80 overflow-y-auto py-1">
+                {POPULAR_FONTS.map((name) => {
+                  const isActive = name === fontName;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setFontName(name)}
+                      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm hover:bg-stone-50 ${
+                        isActive ? "bg-amber-50" : ""
+                      }`}
+                    >
+                      <span
+                        className="truncate text-base text-stone-800"
+                        style={{ fontFamily: fontStack(name) }}
+                      >
+                        {name}
+                      </span>
+                      <span className="shrink-0 text-xs text-stone-400">
+                        {name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          </>)}
+        </div>
+      </header>
+
+      <div className="grid min-h-0 flex-1 grid-cols-[1fr_auto_1fr]">
+        <div className="flex min-h-0 flex-col pt-3 pr-8 pb-8 pl-16">
+          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-sm bg-white shadow-[0_2px_12px_rgba(60,40,10,0.06)] ring-1 ring-black/5">
+            <ThreadPrimitive.Viewport
+              autoScroll={false}
+              className="flex-1 scroll-pt-8 overflow-y-auto px-6 pt-8 text-lg leading-relaxed"
+            >
+              <ThreadPrimitive.Messages
+                components={{
+                  UserMessage,
+                  AssistantMessage,
+                }}
+              />
+              <div className="h-4" />
+            </ThreadPrimitive.Viewport>
+
+            <div className="border-t border-stone-200 bg-[#f7f1de] px-6 py-4">
+              <ComposerPrimitive.Root className="flex items-end gap-2 rounded-2xl border border-stone-300 bg-white px-4 py-2 focus-within:border-amber-800">
+                <ComposerPrimitive.Input
+                  autoFocus
+                  rows={1}
+                  placeholder="Reply…"
+                  className="flex-1 resize-none bg-transparent py-1 text-lg text-stone-900 outline-none placeholder:text-stone-500"
+                />
+                <ComposerPrimitive.Send
+                  aria-label="Send"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[oklch(0.473_0.137_46.201)] text-white"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M22 2 11 13" />
+                    <path d="M22 2 15 22l-4-9-9-4Z" />
+                  </svg>
+                </ComposerPrimitive.Send>
+              </ComposerPrimitive.Root>
+            </div>
+          </div>
+        </div>
+
+        <PhaseIndicator phase={phase} />
+
+        <SourceSheetPanel sheet={sheet} narrative={narrative} poem={poem} />
+      </div>
+    </ThreadPrimitive.Root>
+  );
+}
