@@ -60,7 +60,8 @@ Whose words:
   - BAD: "The text suggests the door operates as a bidirectional barrier."
 
 Title:
-- Set the title based on what this conversation is about.
+- Set the title based on what this conversation is about. 
+- If you only know one thing p sxut it in the title.
 - 2–6 words, learner's framing. Examples: "Sleep and Surrender", "The Door That Closes Both Ways".
 - Change to reflect the evolving focus of the conversation.
 - Omit if not yet known. The tool is a full rewrite — if you previously set a title and still want it, include it again.

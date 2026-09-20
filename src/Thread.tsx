@@ -304,6 +304,7 @@ const TextSearchToolPart: ToolCallContentPartComponent = ({ toolCallId }) => {
 };
 
 const HiddenToolPart: ToolCallContentPartComponent = () => null;
+const HiddenReasoningPart = () => null;
 
 const UserMessage = () => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -380,6 +381,7 @@ const AssistantMessage = () => {
           <MessagePrimitive.Parts
             components={{
               Text: TextPart,
+              Reasoning: HiddenReasoningPart,
               tools: {
                 by_name: {
                   show_text: ShowTextToolPart,
@@ -439,30 +441,99 @@ type SheetView = "narrative" | "notes" | "poem";
 const SheetToggle = ({
   view,
   onChange,
-  hasPoem,
 }: {
   view: SheetView;
   onChange: (v: SheetView) => void;
-  hasPoem: boolean;
 }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!wrapperRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
   const btn = (target: SheetView, label: string) => (
     <button
       type="button"
       onClick={() => onChange(target)}
-      className={`rounded px-3 py-1 transition ${
+      className={`rounded px-2 py-0.5 tracking-wider transition ${
         view === target
-          ? "bg-white text-stone-900 shadow-sm"
-          : "text-stone-500 hover:text-stone-700"
+          ? "bg-stone-200 text-stone-900"
+          : "text-stone-500 hover:text-stone-800"
       }`}
     >
       {label}
     </button>
   );
   return (
-    <div className="inline-flex items-center rounded-md border border-stone-200 bg-stone-50 p-0.5 text-sm">
-      {btn("narrative", "Narrative")}
-      {btn("notes", "Notes")}
-      {hasPoem && btn("poem", "Poem")}
+    <div ref={wrapperRef} className="relative inline-flex">
+      <div className="inline-flex items-center rounded-md border border-stone-200 bg-white p-0.5 text-xs">
+        {btn("narrative", "Narrative")}
+        {btn("notes", "Notes")}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="More views"
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          className={`flex items-center rounded px-1.5 py-0.5 transition ${
+            menuOpen || view === "poem"
+              ? "bg-stone-200 text-stone-900"
+              : "text-stone-500 hover:text-stone-800"
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 12 12"
+            width="12"
+            height="12"
+            aria-hidden="true"
+          >
+            <path
+              d="M3 4.5 L6 7.5 L9 4.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+      {menuOpen && (
+        <div
+          role="menu"
+          className="absolute top-full right-0 z-20 mt-1 min-w-[8rem] overflow-hidden rounded-md border border-stone-200 bg-white text-sm shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onChange("poem");
+              setMenuOpen(false);
+            }}
+            className={`block w-full px-3 py-1.5 text-left tracking-wider transition ${
+              view === "poem"
+                ? "bg-stone-100 text-stone-900"
+                : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+            }`}
+          >
+            Poem
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -510,32 +581,26 @@ const SourceSheetPanel = ({
   sheet,
   narrative,
   poem,
+  isRunning = false,
+  onRewriteNarrative,
+  view,
+  onViewChange,
 }: {
   sheet: SourceSheet;
   narrative: NarrativeSheet | null;
   poem: PoemSheet | null;
+  isRunning?: boolean;
+  onRewriteNarrative?: () => void;
+  view: SheetView;
+  onViewChange: (v: SheetView) => void;
 }) => {
   const hasNarrative =
     narrative !== null &&
     (narrative.items.length > 0 || (narrative.title ?? "").length > 0);
-  const hasPoem =
-    poem !== null && (poem.markdown.length > 0 || (poem.title ?? "").length > 0);
-  const [view, setView] = useState<SheetView>("notes");
-  const prevHasNarrativeRef = useRef(false);
+  const hasNotesContent =
+    sheet.items.length > 0 || (sheet.title ?? "").length > 0;
+  const showToggle = hasNotesContent || hasNarrative;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (hasNarrative && !prevHasNarrativeRef.current) {
-      setView("narrative");
-    }
-    if (!hasNarrative && view === "narrative") {
-      setView("notes");
-    }
-    if (!hasPoem && view === "poem") {
-      setView(hasNarrative ? "narrative" : "notes");
-    }
-    prevHasNarrativeRef.current = hasNarrative;
-  }, [hasNarrative, hasPoem, view]);
 
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -695,12 +760,34 @@ const SourceSheetPanel = ({
   }, [sheet, view]);
 
   return (
-    <aside className="flex min-h-0 flex-col pt-3 pr-16 pb-8 pl-8">
+    <aside className="flex min-h-0 flex-1 flex-col lg:pt-3 lg:pr-16 lg:pb-8 lg:pl-8">
       <div
         ref={scrollContainerRef}
-        className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto rounded-sm bg-white shadow-[0_2px_12px_rgba(60,40,10,0.06)] ring-1 ring-black/5"
+        className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
-        <div className="space-y-8 px-12 pt-8 pb-14">
+        {(() => {
+          const showRewriteBtn =
+            view === "narrative" && onRewriteNarrative !== undefined;
+          if (!showRewriteBtn && !showToggle) return null;
+          return (
+            <div className="absolute top-6 right-6 z-10 hidden items-center gap-2 lg:flex">
+              {showRewriteBtn && (
+                <button
+                  type="button"
+                  onClick={onRewriteNarrative}
+                  disabled={isRunning}
+                  className="rounded-md border border-stone-200 bg-white px-2 py-0.5 text-xs tracking-wider text-stone-500 transition hover:bg-stone-200 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {hasNarrative ? "Rewrite" : "Draft"}
+                </button>
+              )}
+              {showToggle && (
+                <SheetToggle view={view} onChange={onViewChange} />
+              )}
+            </div>
+          );
+        })()}
+        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-14">
           {(() => {
             const currentTitle =
               view === "narrative" && narrative
@@ -708,30 +795,37 @@ const SourceSheetPanel = ({
                 : view === "poem" && poem
                   ? poem.title
                   : sheet.title;
-            if (!currentTitle && !hasNarrative) return null;
+            if (!currentTitle) return null;
+            const titleHasRewrite =
+              view === "narrative" && onRewriteNarrative !== undefined;
+            // Reserve right-padding on lg+ so the absolutely-positioned
+            // toggle/rewrite cluster doesn't overlap the title — the title
+            // wraps to a new line instead.
+            const titleRightPad = titleHasRewrite ? "lg:pr-[22rem]" : "lg:pr-72";
             return (
-              <div className="flex items-baseline justify-between gap-4">
-                {currentTitle ? (
-                  <h2 className="text-2xl font-semibold text-stone-900">
-                    {currentTitle}
-                  </h2>
-                ) : (
-                  <div />
-                )}
-                {hasNarrative && (
-                  <SheetToggle
-                    view={view}
-                    onChange={setView}
-                    hasPoem={hasPoem}
-                  />
-                )}
-              </div>
+              <h2
+                className={`text-xl font-semibold text-stone-900 lg:text-2xl ${titleRightPad}`}
+              >
+                {currentTitle}
+              </h2>
             );
           })()}
-          {view === "narrative" && narrative ? (
-            <NarrativeView narrative={narrative} />
-          ) : view === "poem" && poem ? (
-            <PoemView poem={poem} />
+          {view === "narrative" ? (
+            narrative && hasNarrative ? (
+              <NarrativeView narrative={narrative} />
+            ) : (
+              <div className="mt-3 text-center text-lg leading-relaxed text-stone-400 italic">
+                Nothing drafted yet.
+              </div>
+            )
+          ) : view === "poem" ? (
+            poem ? (
+              <PoemView poem={poem} />
+            ) : (
+              <div className="mt-3 text-center text-lg leading-relaxed text-stone-400 italic">
+                No poem yet.
+              </div>
+            )
           ) : (
             <>
               {sheet.items.length === 0 ? (
@@ -961,12 +1055,18 @@ export function Thread({
   poem,
   phase,
   headerRight,
+  isRunning = false,
+  onRewriteNarrative,
+  loadEpoch = 0,
 }: {
   sheet: SourceSheet;
   narrative: NarrativeSheet | null;
   poem: PoemSheet | null;
   phase: number;
   headerRight?: ReactNode;
+  isRunning?: boolean;
+  onRewriteNarrative?: () => void;
+  loadEpoch?: number;
 }) {
   const [fontName, setFontName] = useState<string>("EB Garamond");
   const [titleSize, setTitleSize] = useState<number>(26);
@@ -977,6 +1077,18 @@ export function Thread({
   const [logotypeMenuUnlocked, setLogotypeMenuUnlocked] = useState(false);
   const logoClickCountRef = useRef(0);
   const logoClickTimeoutRef = useRef<number | null>(null);
+  const chatViewportRef = useRef<HTMLDivElement>(null);
+
+  // When a session loads (loadEpoch bumps), scroll the chat viewport to top.
+  // The per-message scrollIntoView effects fire on mount; setTimeout(0) defers
+  // our scroll until after those settle so it wins.
+  useEffect(() => {
+    if (loadEpoch === 0) return;
+    const t = window.setTimeout(() => {
+      chatViewportRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [loadEpoch]);
   const handleLogoClick = () => {
     if (logoClickTimeoutRef.current !== null) {
       window.clearTimeout(logoClickTimeoutRef.current);
@@ -1017,10 +1129,41 @@ export function Thread({
   const fontFamily = fontStack(fontName);
   const subtitleSize = Math.max(13, Math.round(titleSize * 0.65));
 
+  // ---- Mobile / desktop layout state ----
+  const hasNarrative =
+    narrative !== null &&
+    (narrative.items.length > 0 || (narrative.title ?? "").length > 0);
+  const [sheetView, setSheetView] = useState<SheetView>("notes");
+  const [mobileTab, setMobileTab] = useState<"chat" | "notes" | "narrative">(
+    "chat",
+  );
+  const prevHasNarrativeRef = useRef(false);
+
+  // First time a narrative appears: switch sheet view to narrative; if user is
+  // already on the sheet tabs on mobile, also flip the mobile tab to narrative.
+  useEffect(() => {
+    if (hasNarrative && !prevHasNarrativeRef.current) {
+      setSheetView("narrative");
+      setMobileTab((t) => (t === "chat" ? "chat" : "narrative"));
+    }
+    prevHasNarrativeRef.current = hasNarrative;
+  }, [hasNarrative]);
+
+  const handleSheetViewChange = (v: SheetView) => {
+    setSheetView(v);
+    if (v === "notes") setMobileTab("notes");
+    if (v === "narrative") setMobileTab("narrative");
+  };
+  const handleMobileTabChange = (t: "chat" | "notes" | "narrative") => {
+    setMobileTab(t);
+    if (t === "notes") setSheetView("notes");
+    if (t === "narrative") setSheetView("narrative");
+  };
+
   return (
-    <ThreadPrimitive.Root className="flex h-screen flex-col bg-[#fdfaf2]">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#fdfaf2] pt-6 pb-3">
-        <div className="pr-8 pl-16">
+    <ThreadPrimitive.Root className="flex h-dvh flex-col bg-[#fdfaf2]">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#fdfaf2] px-3 pt-3 pb-2 lg:px-0 lg:pt-6 lg:pb-3">
+        <div className="lg:pr-8 lg:pl-16">
           <div className="mx-auto flex max-w-3xl items-baseline gap-3">
             <h1
               className="leading-tight select-none"
@@ -1039,15 +1182,15 @@ export function Thread({
               Chidush Builder
             </h1>
             <p
-              className="text-stone-500"
+              className="hidden text-stone-500 lg:block"
               style={{ fontFamily, fontSize: `${subtitleSize}px` }}
             >
-              Guided, interactive, generative Torah learning
+              Guided learning, creative outcomes
             </p>
           </div>
         </div>
         <div />
-        <div ref={menuRef} className="relative flex items-center justify-end gap-2 pr-16">
+        <div ref={menuRef} className="relative flex items-center justify-end gap-2 lg:pr-16">
           {headerRight}
           {logotypeMenuUnlocked && (<>
           <button
@@ -1199,12 +1342,52 @@ export function Thread({
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_auto_1fr]">
-        <div className="flex min-h-0 flex-col pt-3 pr-8 pb-8 pl-16">
-          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-sm bg-white shadow-[0_2px_12px_rgba(60,40,10,0.06)] ring-1 ring-black/5">
+      {/* Mobile tab bar: Chat | Notes | Narrative */}
+      <div className="flex shrink-0 justify-start gap-1 border-b border-stone-200 bg-[#fdfaf2] px-3 lg:hidden">
+        {(
+          [
+            { id: "chat", label: "Chat" },
+            { id: "notes", label: "Notes" },
+            { id: "narrative", label: "Narrative" },
+          ] as const
+        ).map((t) => {
+          const active = mobileTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleMobileTabChange(t.id)}
+              className={`relative px-3 py-2.5 text-sm font-medium transition-colors ${
+                active
+                  ? "text-[oklch(0.473_0.137_46.201)]"
+                  : "text-stone-500 hover:text-stone-800"
+              }`}
+            >
+              {t.label}
+              <span
+                className={`pointer-events-none absolute right-3 bottom-0 left-3 h-0.5 rounded-full transition-opacity ${
+                  active
+                    ? "bg-[oklch(0.473_0.137_46.201)] opacity-100"
+                    : "opacity-0"
+                }`}
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_auto_1fr]">
+        {/* Chat pane */}
+        <div
+          className={`min-h-0 flex-col lg:flex lg:pt-3 lg:pr-8 lg:pb-8 lg:pl-16 ${
+            mobileTab === "chat" ? "flex" : "hidden lg:flex"
+          }`}
+        >
+          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5">
             <ThreadPrimitive.Viewport
+              ref={chatViewportRef}
               autoScroll={false}
-              className="flex-1 scroll-pt-8 overflow-y-auto px-6 pt-8 text-lg leading-relaxed"
+              className="flex-1 scroll-pt-8 overflow-y-auto px-4 pt-5 text-base leading-relaxed lg:px-6 lg:pt-8 lg:text-lg"
             >
               <ThreadPrimitive.Messages
                 components={{
@@ -1215,13 +1398,13 @@ export function Thread({
               <div className="h-4" />
             </ThreadPrimitive.Viewport>
 
-            <div className="border-t border-stone-200 bg-[#f7f1de] px-6 py-4">
-              <ComposerPrimitive.Root className="flex items-end gap-2 rounded-2xl border border-stone-300 bg-white px-4 py-2 focus-within:border-amber-800">
+            <div className="border-t border-stone-200 bg-[#f7f1de] px-3 py-3 lg:px-6 lg:py-4">
+              <ComposerPrimitive.Root className="flex items-end gap-2 rounded-2xl border border-stone-300 bg-white px-3 py-2 focus-within:border-amber-800 lg:px-4">
                 <ComposerPrimitive.Input
                   autoFocus
                   rows={1}
                   placeholder="Reply…"
-                  className="flex-1 resize-none bg-transparent py-1 text-lg text-stone-900 outline-none placeholder:text-stone-500"
+                  className="flex-1 resize-none bg-transparent py-1 text-base text-stone-900 outline-none placeholder:text-stone-500 lg:text-lg"
                 />
                 <ComposerPrimitive.Send
                   aria-label="Send"
@@ -1247,10 +1430,29 @@ export function Thread({
           </div>
         </div>
 
-        <PhaseIndicator phase={phase} />
+        {/* PhaseIndicator: desktop only */}
+        <div className="hidden lg:contents">
+          <PhaseIndicator phase={phase} />
+        </div>
 
-        <SourceSheetPanel sheet={sheet} narrative={narrative} poem={poem} />
+        {/* Sheet pane */}
+        <div
+          className={`min-h-0 ${
+            mobileTab === "chat" ? "hidden lg:flex" : "flex"
+          } lg:flex lg:flex-col`}
+        >
+          <SourceSheetPanel
+            sheet={sheet}
+            narrative={narrative}
+            poem={poem}
+            isRunning={isRunning}
+            onRewriteNarrative={onRewriteNarrative}
+            view={sheetView}
+            onViewChange={handleSheetViewChange}
+          />
+        </div>
       </div>
     </ThreadPrimitive.Root>
   );
 }
+
