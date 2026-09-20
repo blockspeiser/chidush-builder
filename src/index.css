@@ -11,3 +11,17 @@ body {
   font-family:
     ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
+
+/* Assistant "working" indicator: three dots with a pronounced bounce. */
+.thinking-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #a8a29e; /* stone-400 */
+  animation: thinking-bounce 0.9s ease-in-out infinite;
+}
+@keyframes thinking-bounce {
+  0%, 100% { transform: translateY(0.35rem); opacity: 0.55; }
+  50% { transform: translateY(-0.35rem); opacity: 1; }
+}

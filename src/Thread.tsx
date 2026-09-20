@@ -347,15 +347,13 @@ const ThinkingIndicator = () => {
   if (!isRunning || streamingText) return null;
   return (
     <div
-      className="flex items-center gap-2 py-1 text-sm text-stone-500"
-      aria-live="polite"
+      className="flex h-6 items-center gap-1.5 px-1"
+      role="status"
+      aria-label="Thinking"
     >
-      <span>Thinking</span>
-      <span className="flex gap-1" aria-hidden="true">
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:-0.3s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:-0.15s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400" />
-      </span>
+      <span className="thinking-dot" style={{ animationDelay: "0s" }} />
+      <span className="thinking-dot" style={{ animationDelay: "0.15s" }} />
+      <span className="thinking-dot" style={{ animationDelay: "0.3s" }} />
     </div>
   );
 };
