@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Matches the assistant avatar: amber-800 circle, amber-50 letter. -->
+  <circle cx="32" cy="32" r="32" fill="#92400e"/>
+  <text x="32" y="45" text-anchor="middle" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif" font-weight="600" font-size="40" fill="#fffbeb">ח</text>
+</svg>
