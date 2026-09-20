@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "check:firestore": "tsx server/scripts/firestoreSmoke.ts",
     "peek:users": "tsx server/scripts/peekUsers.ts",
-    "check:usage": "tsx server/scripts/usageSmoke.ts"
+    "check:usage": "tsx server/scripts/usageSmoke.ts",
+    "deploy": "scripts/deploy.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",

@@ -8,7 +8,7 @@ says what, if anything, Brett needs to do in GCP right now.
 **Status: READY FOR YOU — step 7, the first deploy.**
 
 Phases 1–4 are done and phase 5's Dockerfile is committed and verified
-locally in production mode. Run step 7 from the repo root (Cloud Build
+locally in production mode. Run `npm run deploy` from the repo root (Cloud Build
 builds the image; no local Docker needed; takes a few minutes the first
 time), then step 8. Or tell Claude to run step 7 for you — `gcloud` on this
 machine is already signed in and pointed at `chidush-builder`.
@@ -182,10 +182,12 @@ phase 5.
   gcloud secrets add-iam-policy-binding anthropic-api-key --member serviceAccount:chidush-run@chidush-builder.iam.gserviceaccount.com --role roles/secretmanager.secretAccessor --project chidush-builder
   ```
   `GOOGLE_CLOUD_PROJECT=chidush-builder` is already in `.env`.
-- [ ] **7. Deploy (CLI, during phase 5).**
+- [ ] **7. Deploy (CLI, during phase 5).** All flags live in
+  `scripts/deploy.sh`; edit that file to change region, instance caps, etc.
   ```bash
-  gcloud run deploy chidush --source . --region us-central1 --project chidush-builder --service-account chidush-run@chidush-builder.iam.gserviceaccount.com --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest --set-env-vars GOOGLE_CLOUD_PROJECT=chidush-builder,FIRESTORE_DATABASE_ID=chidush-builder-db --allow-unauthenticated --max-instances 3 --timeout 600 --concurrency 20
+  npm run deploy
   ```
+  Prints the service URL when done.
 - [ ] **8. Post-deploy (Console).**
   1. Copy the `https://chidush-....run.app` URL the deploy prints.
   2. https://console.firebase.google.com/project/chidush-builder/authentication/settings
