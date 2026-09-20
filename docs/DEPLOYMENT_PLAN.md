@@ -5,19 +5,18 @@ says what, if anything, Brett needs to do in GCP right now.
 
 ## Your next GCP action
 
-**Status: READY FOR YOU — do GCP steps 1 through 6.**
+**Status: READY FOR YOU — do GCP steps 1b through 6.**
 
-Phase 1 is complete and committed. Phases 2 and 3 (auth, Firestore) cannot
-be built or tested until the Firebase project exists. When you finish,
-Claude needs three things from you:
+Project `chidush-builder` exists (step 1a done). Phases 2 and 3 (auth,
+Firestore) cannot be built or tested until steps 1b–6 are finished. When
+you're done, Claude needs two things from you:
 
-1. The project ID.
-2. The Firebase web app config (apiKey, authDomain, projectId, appId) —
+1. The Firebase web app config (apiKey, authDomain, projectId, appId) —
    paste it into `.env` as `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
    `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`. These are public
    identifiers, safe in the client bundle.
-3. Confirmation that `gcloud auth application-default login` succeeded and
-   `GOOGLE_CLOUD_PROJECT=<id>` is in `.env`.
+2. Confirmation that `gcloud auth application-default login` succeeded and
+   `GOOGLE_CLOUD_PROJECT=chidush-builder` is in `.env`.
 
 ## Target shape
 
@@ -94,20 +93,52 @@ Each phase is one commit and is testable locally before moving on.
 
 ## GCP configuration steps (in order)
 
-Steps 1–6 unblock phases 2–3. Steps 7–8 happen during phase 5.
+Project ID: **`chidush-builder`**. Every command below is written for that
+ID. Each step is labeled **Console** (do it in a browser) or **CLI** (paste
+into a terminal). Steps 1–6 unblock phases 2–3. Steps 7–8 happen during
+phase 5.
 
-- [ ] **1. Project + billing.** Create the project in the Firebase console
-  (creates the GCP project too). Link billing. Create a budget with alerts
-  at 50% and 100% of a monthly amount you're comfortable with.
-- [ ] **2. Enable APIs.**
+- [x] **1a. Create the project.** *Done — `chidush-builder`.*
+- [ ] **1b. Billing (Console).** https://console.cloud.google.com/billing/linkedaccount?project=chidush-builder
+  → link a billing account. Then https://console.cloud.google.com/billing/budgets
+  → Create budget → scope it to project `chidush-builder`, pick a monthly
+  amount you're comfortable with, alert thresholds 50% and 100%.
+- [ ] **1c. CLI setup (CLI, once).** Install the gcloud CLI if you don't
+  have it (https://cloud.google.com/sdk/docs/install), then:
   ```bash
-  gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com firestore.googleapis.com identitytoolkit.googleapis.com
+  gcloud auth login
   ```
-- [ ] **3. Firebase Authentication.** Enable the Google provider. Register a
-  Web app; copy its public config (apiKey, authDomain, projectId, appId)
-  into `.env` as `VITE_FIREBASE_*`. `localhost` is already authorized.
-- [ ] **4. Firestore.** Create the default database, Native mode, same region
-  as Cloud Run (recommend `us-central1`). Publish deny-all rules:
+  ```bash
+  gcloud config set project chidush-builder
+  ```
+  Every later `gcloud` command relies on that default. Confirm with
+  `gcloud config get project` — it must print `chidush-builder`.
+- [ ] **2. Enable APIs (CLI).**
+  ```bash
+  gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com firestore.googleapis.com identitytoolkit.googleapis.com --project chidush-builder
+  ```
+- [ ] **3. Firebase Authentication (Console).**
+  1. https://console.firebase.google.com/project/chidush-builder/authentication
+     → Get started → Sign-in method → Google → Enable → pick a support
+     email → Save.
+  2. https://console.firebase.google.com/project/chidush-builder/settings/general
+     → under "Your apps" click the web icon `</>` → nickname
+     `chidush-web`, leave Hosting unchecked → Register app.
+  3. It shows a `firebaseConfig` object. Copy these four values into
+     `.env` (they are public identifiers, safe in the client bundle):
+     ```
+     VITE_FIREBASE_API_KEY=<apiKey>
+     VITE_FIREBASE_AUTH_DOMAIN=chidush-builder.firebaseapp.com
+     VITE_FIREBASE_PROJECT_ID=chidush-builder
+     VITE_FIREBASE_APP_ID=<appId>
+     ```
+  `localhost` is already an authorized domain, so local sign-in works.
+- [ ] **4. Firestore (Console).**
+  1. https://console.firebase.google.com/project/chidush-builder/firestore
+     → Create database → location `us-central1` (nam5 multi-region is
+     also fine) → **Native mode** → start in **production mode** → Create.
+  2. Rules tab → replace the contents with the deny-all rules below →
+     Publish. Only the server (Admin SDK, bypasses rules) touches data.
   ```
   rules_version = '2';
   service cloud.firestore {
@@ -116,22 +147,43 @@ Steps 1–6 unblock phases 2–3. Steps 7–8 happen during phase 5.
     }
   }
   ```
-- [ ] **5. Secret Manager.** Create secret `anthropic-api-key` with your key.
-- [ ] **6. Local credentials + service account.**
+- [ ] **5. Secret Manager (CLI).** Reads the key from `.env` so it never
+  appears in your shell history:
+  ```bash
+  grep '^ANTHROPIC_API_KEY=' .env | cut -d= -f2- | tr -d '\n' | gcloud secrets create anthropic-api-key --data-file=- --project chidush-builder
+  ```
+- [ ] **6. Local credentials + service account (CLI).**
+  Local dev credentials (opens a browser; sign in with the same Google
+  account that owns the project):
   ```bash
   gcloud auth application-default login
-  gcloud iam service-accounts create chidush-run --display-name "Chidush Cloud Run"
-  gcloud projects add-iam-policy-binding PROJECT_ID --member serviceAccount:chidush-run@PROJECT_ID.iam.gserviceaccount.com --role roles/datastore.user
-  gcloud secrets add-iam-policy-binding anthropic-api-key --member serviceAccount:chidush-run@PROJECT_ID.iam.gserviceaccount.com --role roles/secretmanager.secretAccessor
   ```
-  Put `GOOGLE_CLOUD_PROJECT=PROJECT_ID` in the server `.env`.
-- [ ] **7. Deploy.**
+  Service account for Cloud Run and its two roles:
   ```bash
-  gcloud run deploy chidush --source . --region us-central1 --service-account chidush-run@PROJECT_ID.iam.gserviceaccount.com --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest --set-env-vars GOOGLE_CLOUD_PROJECT=PROJECT_ID --allow-unauthenticated --max-instances 3 --timeout 600 --concurrency 20
+  gcloud iam service-accounts create chidush-run --display-name "Chidush Cloud Run" --project chidush-builder
   ```
-- [ ] **8. Post-deploy.** Add the `*.run.app` hostname to Firebase Auth
-  authorized domains. Set the Anthropic console spend limit. Custom domain
-  later via Cloud Run domain mapping if wanted.
+  ```bash
+  gcloud projects add-iam-policy-binding chidush-builder --member serviceAccount:chidush-run@chidush-builder.iam.gserviceaccount.com --role roles/datastore.user
+  ```
+  ```bash
+  gcloud secrets add-iam-policy-binding anthropic-api-key --member serviceAccount:chidush-run@chidush-builder.iam.gserviceaccount.com --role roles/secretmanager.secretAccessor --project chidush-builder
+  ```
+  Then add to `.env`:
+  ```
+  GOOGLE_CLOUD_PROJECT=chidush-builder
+  ```
+- [ ] **7. Deploy (CLI, during phase 5).**
+  ```bash
+  gcloud run deploy chidush --source . --region us-central1 --project chidush-builder --service-account chidush-run@chidush-builder.iam.gserviceaccount.com --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest --set-env-vars GOOGLE_CLOUD_PROJECT=chidush-builder --allow-unauthenticated --max-instances 3 --timeout 600 --concurrency 20
+  ```
+- [ ] **8. Post-deploy (Console).**
+  1. Copy the `https://chidush-....run.app` URL the deploy prints.
+  2. https://console.firebase.google.com/project/chidush-builder/authentication/settings
+     → Authorized domains → Add domain → paste the hostname (no
+     `https://`). Without this, Google sign-in fails in prod.
+  3. https://console.anthropic.com/settings/limits → set a monthly spend
+     limit.
+  Custom domain later via Cloud Run domain mapping if wanted.
 
 ## Local development
 
@@ -139,7 +191,7 @@ Steps 1–6 unblock phases 2–3. Steps 7–8 happen during phase 5.
 
 ```
 ANTHROPIC_API_KEY=...            # server only
-GOOGLE_CLOUD_PROJECT=...         # server only, from GCP step 6
+GOOGLE_CLOUD_PROJECT=chidush-builder  # server only, from GCP step 6
 VITE_FIREBASE_API_KEY=...        # client, from GCP step 3
 VITE_FIREBASE_AUTH_DOMAIN=...
 VITE_FIREBASE_PROJECT_ID=...
