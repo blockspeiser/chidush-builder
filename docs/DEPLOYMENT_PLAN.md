@@ -5,18 +5,22 @@ says what, if anything, Brett needs to do in GCP right now.
 
 ## Your next GCP action
 
-**Status: READY FOR YOU — do GCP steps 1b through 6.**
+**Status: READY FOR YOU — steps 4, 5 and 6 remain (checked 2026-09-20).**
 
-Project `chidush-builder` exists (step 1a done). Phases 2 and 3 (auth,
-Firestore) cannot be built or tested until steps 1b–6 are finished. When
-you're done, Claude needs two things from you:
+Verified from the CLI: billing is linked, all six APIs are enabled, the
+Firebase web config is in `.env`, and `gcloud` defaults to
+`chidush-builder`. Still to do:
 
-1. The Firebase web app config (apiKey, authDomain, projectId, appId) —
-   paste it into `.env` as `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`. These are public
-   identifiers, safe in the client bundle.
-2. Confirmation that `gcloud auth application-default login` succeeded and
-   `GOOGLE_CLOUD_PROJECT=chidush-builder` is in `.env`.
+- **Step 1b (Console):** confirm a budget exists — the CLI can't check this.
+- **Step 4 (Console):** create the Firestore database and publish rules.
+- **Step 5 (CLI):** create the `anthropic-api-key` secret.
+- **Step 6 (CLI):** rerun `gcloud auth application-default login` — the
+  existing local credential is stale — then create the `chidush-run`
+  service account and its two role bindings. `GOOGLE_CLOUD_PROJECT` is
+  already in `.env`.
+
+Claude can run steps 5 and 6 from this machine if you say so; they only
+create resources and can be undone.
 
 ## Target shape
 
@@ -99,11 +103,11 @@ into a terminal). Steps 1–6 unblock phases 2–3. Steps 7–8 happen during
 phase 5.
 
 - [x] **1a. Create the project.** *Done — `chidush-builder`.*
-- [ ] **1b. Billing (Console).** https://console.cloud.google.com/billing/linkedaccount?project=chidush-builder
+- [~] **1b. Billing (Console).** *Billing linked. Budget not yet verified.* https://console.cloud.google.com/billing/linkedaccount?project=chidush-builder
   → link a billing account. Then https://console.cloud.google.com/billing/budgets
   → Create budget → scope it to project `chidush-builder`, pick a monthly
   amount you're comfortable with, alert thresholds 50% and 100%.
-- [ ] **1c. CLI setup (CLI, once).** Install the gcloud CLI if you don't
+- [x] **1c. CLI setup (CLI, once).** *Done.* Install the gcloud CLI if you don't
   have it (https://cloud.google.com/sdk/docs/install), then:
   ```bash
   gcloud auth login
@@ -113,11 +117,11 @@ phase 5.
   ```
   Every later `gcloud` command relies on that default. Confirm with
   `gcloud config get project` — it must print `chidush-builder`.
-- [ ] **2. Enable APIs (CLI).**
+- [x] **2. Enable APIs (CLI).** *Done — all six enabled.*
   ```bash
   gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com firestore.googleapis.com identitytoolkit.googleapis.com --project chidush-builder
   ```
-- [ ] **3. Firebase Authentication (Console).**
+- [x] **3. Firebase Authentication (Console).** *Done — web config in `.env`.*
   1. https://console.firebase.google.com/project/chidush-builder/authentication
      → Get started → Sign-in method → Google → Enable → pick a support
      email → Save.
@@ -168,10 +172,7 @@ phase 5.
   ```bash
   gcloud secrets add-iam-policy-binding anthropic-api-key --member serviceAccount:chidush-run@chidush-builder.iam.gserviceaccount.com --role roles/secretmanager.secretAccessor --project chidush-builder
   ```
-  Then add to `.env`:
-  ```
-  GOOGLE_CLOUD_PROJECT=chidush-builder
-  ```
+  `GOOGLE_CLOUD_PROJECT=chidush-builder` is already in `.env`.
 - [ ] **7. Deploy (CLI, during phase 5).**
   ```bash
   gcloud run deploy chidush --source . --region us-central1 --project chidush-builder --service-account chidush-run@chidush-builder.iam.gserviceaccount.com --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest --set-env-vars GOOGLE_CLOUD_PROJECT=chidush-builder --allow-unauthenticated --max-instances 3 --timeout 600 --concurrency 20
