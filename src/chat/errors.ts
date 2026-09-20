@@ -3,6 +3,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 export function describeError(err: unknown): string {
+  // Subclass of APIError, so it must be checked first.
+  if (err instanceof Anthropic.APIConnectionError) {
+    return "Couldn't reach the server. Check your connection and try again.";
+  }
   if (err instanceof Anthropic.APIError) {
     const serverMessage = extractServerMessage(err.error);
     if (err.status === 401) {
@@ -19,9 +23,6 @@ export function describeError(err: unknown): string {
       return "The assistant hit a server error. Please try again.";
     }
     return serverMessage ?? "The request failed. Please try again.";
-  }
-  if (err instanceof Anthropic.APIConnectionError) {
-    return "Couldn't reach the server. Check your connection and try again.";
   }
   if (err instanceof Error && /fetch|network/i.test(err.message)) {
     return "Couldn't reach the server. Check your connection and try again.";
