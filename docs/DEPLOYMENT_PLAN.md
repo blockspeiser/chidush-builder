@@ -5,8 +5,13 @@ says what, if anything, Brett needs to do in GCP right now.
 
 ## Your next GCP action
 
-**Status: nothing needed until phase 5.** GCP steps 1–6 are complete
-and verified. Steps 7–8 come with the first deploy.
+**Status: READY FOR YOU — step 7, the first deploy.**
+
+Phases 1–4 are done and phase 5's Dockerfile is committed and verified
+locally in production mode. Run step 7 from the repo root (Cloud Build
+builds the image; no local Docker needed; takes a few minutes the first
+time), then step 8. Or tell Claude to run step 7 for you — `gcloud` on this
+machine is already signed in and pointed at `chidush-builder`.
 
 Known quirk seen 2026-09-20: the very first Google sign-in on a fresh
 browser landed back on the sign-in screen; the second attempt worked.
@@ -86,9 +91,13 @@ Each phase is one commit and is testable locally before moving on.
   live turn (76 in / 68 out / 11k cache-read tokens recorded).
   To change limits without a redeploy: edit `config/limits` in the
   Firestore console (`dailyRequests`, `dailyOutputTokens`).
-- [ ] **Phase 5 — Containerize + deploy.**
-  Multi-stage Dockerfile; first `gcloud run deploy`; smoke test prod.
-  *Needs GCP steps 5, 7, 8.*
+- [~] **Phase 5 — Containerize + deploy.** *Dockerfile done 2026-09-20; deploy pending.*
+  Multi-stage `Dockerfile` (build client + server, then a slim runtime
+  image running `node dist-server/index.js`). Verified locally with
+  `NODE_ENV=production`: static bundle, SPA fallback for `/s/:id`, assets,
+  open `/api/health`, 401 on protected routes. `.dockerignore` excludes
+  `.env`, `sessions/`, `node_modules`. Remaining: GCP steps 7 and 8, then
+  a signed-in smoke test on the `run.app` URL.
 - [ ] **Phase 6 — Hardening.**
   Budget alert, max instances, Anthropic spend limit, uptime check,
   optional allowlist.
