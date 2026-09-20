@@ -5,11 +5,19 @@ says what, if anything, Brett needs to do in GCP right now.
 
 ## Your next GCP action
 
-**Status: nothing needed yet.**
+**Status: READY FOR YOU — do GCP steps 1 through 6.**
 
-Phase 1 is purely code and runs locally with your existing Anthropic key.
-This section will change to "Ready for you" when phase 2 begins, at which
-point GCP steps 1–6 below unblock local auth and Firestore.
+Phase 1 is complete and committed. Phases 2 and 3 (auth, Firestore) cannot
+be built or tested until the Firebase project exists. When you finish,
+Claude needs three things from you:
+
+1. The project ID.
+2. The Firebase web app config (apiKey, authDomain, projectId, appId) —
+   paste it into `.env` as `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`. These are public
+   identifiers, safe in the client bundle.
+3. Confirmation that `gcloud auth application-default login` succeeded and
+   `GOOGLE_CLOUD_PROJECT=<id>` is in `.env`.
 
 ## Target shape
 
@@ -55,11 +63,13 @@ Repo layout after the work:
 
 Each phase is one commit and is testable locally before moving on.
 
-- [ ] **Phase 1 — Server scaffold + proxies (no auth).**
-  Add `server/`, move prompts/tools to `shared/`, Anthropic streaming proxy
-  with server-side body rewrite, Sefaria pass-through, Vite `/api` proxy.
-  Client SDK points at proxy. Delete `VITE_ANTHROPIC_API_KEY`; key moves to
-  server-only `.env`. Test: app behaves as before; key absent from bundle.
+- [x] **Phase 1 — Server scaffold + proxies (no auth).** *Done 2026-09-20.*
+  `server/` (Hono) with Anthropic streaming proxy (server-side body
+  rewrite), Sefaria pass-through, and file-backed sessions behind a
+  `SessionStore` interface ready for the Firestore swap. Prompts and tool
+  schemas moved to `shared/`. Vite proxies `/api`. Key is server-only.
+  Verified: greeting, multi-tool turn, autosave all flow through the proxy;
+  built bundle contains no key. `npm run dev` starts both processes.
 - [ ] **Phase 2 — Firebase Auth.**
   Sign-in screen; ID token on every request; server verifies with Admin SDK.
   Test: signed out → all API 401; signed in → works.
@@ -124,6 +134,17 @@ Steps 1–6 unblock phases 2–3. Steps 7–8 happen during phase 5.
   later via Cloud Run domain mapping if wanted.
 
 ## Local development
+
+`.env` (gitignored) holds server secrets and public client config:
+
+```
+ANTHROPIC_API_KEY=...            # server only
+GOOGLE_CLOUD_PROJECT=...         # server only, from GCP step 6
+VITE_FIREBASE_API_KEY=...        # client, from GCP step 3
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_APP_ID=...
+```
 
 Two processes, one command (`npm run dev`): Vite on 5173 proxying `/api` to
 the server on 8787. The server reads `.env` for `ANTHROPIC_API_KEY` and

@@ -1,4 +1,6 @@
-// Persistence of a study session against the local /sessions server, plus URL slugs.
+// Persistence of a study session against the server API, plus URL slugs.
+
+const SESSIONS = "/api/sessions";
 
 import type { Msg } from "../chat/types";
 import type { StudySnapshot } from "../study/useStudyState";
@@ -15,7 +17,7 @@ export type SessionListItem = {
 };
 
 function sessionUrl(id: string): string {
-  return `/sessions/${encodeURIComponent(id)}`;
+  return `${SESSIONS}/${encodeURIComponent(id)}`;
 }
 
 export function shortSessionId(): string {
@@ -61,7 +63,7 @@ export async function saveSession(
 }
 
 export async function listSessions(): Promise<SessionListItem[]> {
-  const resp = await fetch("/sessions");
+  const resp = await fetch(SESSIONS);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const data = (await resp.json()) as { sessions?: SessionListItem[] };
   return Array.isArray(data.sessions) ? data.sessions : [];

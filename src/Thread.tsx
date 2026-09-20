@@ -35,7 +35,7 @@ function useSefariaText(ref: string): {
     let cancelled = false;
     setData(null);
     setError(null);
-    fetch(`/sefaria-api/texts/${encodeURIComponent(ref)}`)
+    fetch(`/api/sefaria/texts/${encodeURIComponent(ref)}`)
       .then((r) => {
         if (!r.ok) throw new Error(`texts ${r.status}`);
         return r.json();

@@ -1,6 +1,6 @@
 // Converts the UI's message parts into the Anthropic Messages API wire format.
 
-import { CLIENT_TOOL_RESULTS } from "../tools/definitions";
+import { CLIENT_TOOL_RESULTS } from "../../shared/tools";
 import type { Msg, Part } from "./types";
 
 export type ApiMessage = Record<string, unknown>;

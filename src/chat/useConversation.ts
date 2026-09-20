@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { AppendMessage } from "@assistant-ui/react";
-import { CLIENT_TOOL_NAMES } from "../tools/definitions";
+import { CLIENT_TOOL_NAMES } from "../../shared/tools";
 import { executeToolCall, type StudyEffects } from "../tools/executeToolCall";
 import { assistantPartsToApiMessages, buildApiMessages } from "./apiMessages";
 import { streamAssistantTurn } from "./streamTurn";

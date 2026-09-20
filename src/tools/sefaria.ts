@@ -1,4 +1,6 @@
-// Read-only Sefaria API calls backing the research tools.
+// Read-only Sefaria API calls backing the research tools, via our server proxy.
+
+const SEFARIA = "/api/sefaria";
 
 export type TextSearchHit = {
   ref?: string;
@@ -21,7 +23,7 @@ export async function executeReadText(args: { reference: string }): Promise<{
 }> {
   const ref = args.reference;
   if (!ref || typeof ref !== "string") throw new Error("missing reference");
-  const url = `/sefaria-api/v3/texts/${encodeURIComponent(ref)}?version=english`;
+  const url = `${SEFARIA}/v3/texts/${encodeURIComponent(ref)}?version=english`;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`v3/texts ${resp.status}`);
   const data = await resp.json();
@@ -47,7 +49,7 @@ export async function executeGetLinks(args: {
   const ref = args.reference;
   if (!ref || typeof ref !== "string") throw new Error("missing reference");
   const resp = await fetch(
-    `/sefaria-api/link-summary/${encodeURIComponent(ref)}`,
+    `${SEFARIA}/link-summary/${encodeURIComponent(ref)}`,
   );
   if (!resp.ok) throw new Error(`link-summary ${resp.status}`);
   const data = await resp.json();
@@ -66,7 +68,7 @@ export async function executeGetCalendar(): Promise<{
   date?: string;
   items: CalendarItem[];
 }> {
-  const resp = await fetch("/sefaria-api/calendars");
+  const resp = await fetch(`${SEFARIA}/calendars`);
   if (!resp.ok) throw new Error(`calendars ${resp.status}`);
   const data = await resp.json();
   const rawItems: Array<Record<string, unknown>> = data?.calendar_items ?? [];
@@ -107,7 +109,7 @@ export async function executeTextSearch(args: {
       source_proj: true,
       type: "text",
     };
-    const resp = await fetch("/sefaria-api/search-wrapper", {
+    const resp = await fetch(`${SEFARIA}/search-wrapper`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

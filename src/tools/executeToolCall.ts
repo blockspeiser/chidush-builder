@@ -19,7 +19,7 @@ import {
   UPDATE_NARRATIVE_TOOL_NAME,
   UPDATE_NOTES_TOOL_NAME,
   UPDATE_POEM_TOOL_NAME,
-} from "./definitions";
+} from "../../shared/tools";
 import {
   executeGetCalendar,
   executeGetLinks,

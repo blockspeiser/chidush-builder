@@ -1,28 +1,9 @@
 // One streamed assistant turn: sends the request and accumulates content blocks.
 
 import { anthropic } from "../anthropic";
-import { SYSTEM_PROMPT } from "../systemPrompt";
-import { NOTES_SHEET_PROMPT } from "../notesSheetPrompt";
-import { TOOL_DEFINITIONS } from "../tools/definitions";
+import { MAX_TOKENS, MODEL } from "../../shared/modelConfig";
 import type { ApiMessage } from "./apiMessages";
 import type { Part } from "./types";
-
-const MODEL = "claude-opus-5";
-// Opus 5 thinks by default and max_tokens caps thinking + text.
-const MAX_TOKENS = 32000;
-
-const SYSTEM_BLOCKS = [
-  {
-    type: "text" as const,
-    text: SYSTEM_PROMPT,
-    cache_control: { type: "ephemeral" as const },
-  },
-  {
-    type: "text" as const,
-    text: NOTES_SHEET_PROMPT,
-    cache_control: { type: "ephemeral" as const },
-  },
-];
 
 export type TurnResult = {
   /** Content blocks in stream order. Tool-call parts have no result yet. */
@@ -46,11 +27,11 @@ export async function streamAssistantTurn(
   const emitProgress = () =>
     onProgress(orderedParts().map((p) => ({ ...p })));
 
+  // The server replaces everything but `messages` with its own config;
+  // model and max_tokens are sent only because the SDK requires them.
   const stream = anthropic.messages.stream({
     model: MODEL,
     max_tokens: MAX_TOKENS,
-    system: SYSTEM_BLOCKS,
-    tools: TOOL_DEFINITIONS,
     messages: apiMessages as never,
   });
 
