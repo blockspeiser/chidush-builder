@@ -47,7 +47,7 @@ Repo layout after the work:
 ### Abuse protection
 
 - Per-user daily caps on requests and output tokens, checked before proxying.
-- One in-flight turn per user.
+- Up to 3 concurrent streaming turns per user; beyond that the oldest is aborted (never a refusal, so a dropped connection cannot lock anyone out).
 - Server-side request shaping (client cannot pick model/prompt/tools).
 - Cloud Run max instances ≈ 3, request timeout 10 min.
 - GCP billing budget alerts + Anthropic console spend limit.
@@ -75,10 +75,17 @@ Each phase is one commit and is testable locally before moving on.
   process. 900 KB cap per session (Firestore 1 MiB doc limit). File store
   removed. Verified with `npm run check:firestore` and live use.
   `npm run peek:users` lists what is in the database.
-- [ ] **Phase 4 — Usage counters + limits.**
-  Parse usage from final `message_delta`, transactional daily counter,
-  cap check before proxy, one-turn-at-a-time. Client renders limit errors.
-  Test: set caps to 2 requests and hit the wall.
+- [x] **Phase 4 — Usage counters + limits.** *Done 2026-09-20.*
+  `users/{uid}/usage/{YYYY-MM-DD}` counters (requests, input/output/cache
+  tokens) updated from the SSE stream; `reserveRequest` transaction checks
+  `config/limits` (defaults 150 requests / 300k output tokens per UTC day,
+  cached 60s) before proxying. Limit errors return 403 in Anthropic error
+  shape so the client SDK shows the message without retrying. Up to 3
+  concurrent turns per user, oldest aborted beyond that. `GET /api/usage`
+  returns today's counters. Verified with `npm run check:usage` and a
+  live turn (76 in / 68 out / 11k cache-read tokens recorded).
+  To change limits without a redeploy: edit `config/limits` in the
+  Firestore console (`dailyRequests`, `dailyOutputTokens`).
 - [ ] **Phase 5 — Containerize + deploy.**
   Multi-stage Dockerfile; first `gcloud run deploy`; smoke test prod.
   *Needs GCP steps 5, 7, 8.*

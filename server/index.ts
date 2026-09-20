@@ -11,6 +11,7 @@ import { env } from "./env";
 import { sefariaProxy } from "./sefariaProxy";
 import { sessionRoutes } from "./sessionRoutes";
 import { FirestoreSessionStore } from "./sessionStore";
+import { usageRoutes } from "./usageRoutes";
 
 const app = new Hono();
 app.use(logger());
@@ -22,6 +23,7 @@ app.use("/api/*", requireAuth);
 app.route("/api/anthropic", anthropicProxy);
 app.route("/api/sefaria", sefariaProxy);
 app.route("/api/sessions", sessionRoutes(new FirestoreSessionStore()));
+app.route("/api/usage", usageRoutes);
 
 app.onError((err, c) => {
   console.error("[server] unhandled", err);

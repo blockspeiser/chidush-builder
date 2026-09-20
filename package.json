@@ -12,7 +12,8 @@
     "start": "NODE_ENV=production node dist-server/index.js",
     "preview": "vite preview",
     "check:firestore": "tsx server/scripts/firestoreSmoke.ts",
-    "peek:users": "tsx server/scripts/peekUsers.ts"
+    "peek:users": "tsx server/scripts/peekUsers.ts",
+    "check:usage": "tsx server/scripts/usageSmoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",

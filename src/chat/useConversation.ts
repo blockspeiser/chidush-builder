@@ -5,12 +5,16 @@ import type { AppendMessage } from "@assistant-ui/react";
 import { CLIENT_TOOL_NAMES } from "../../shared/tools";
 import { executeToolCall, type StudyEffects } from "../tools/executeToolCall";
 import { assistantPartsToApiMessages, buildApiMessages } from "./apiMessages";
+import { describeError } from "./errors";
 import { streamAssistantTurn } from "./streamTurn";
 import { textMessage, type Msg, type Part, type ToolCallPart } from "./types";
 
 export function useConversation(effects: StudyEffects) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  // Last failure, shown as a banner. The transcript is never altered by it.
+  const [error, setError] = useState<string | null>(null);
+  const [lastSent, setLastSent] = useState<Msg[] | null>(null);
 
   function replaceAssistantContent(assistantId: string, content: Part[]) {
     setMessages((prev) =>
@@ -24,6 +28,8 @@ export function useConversation(effects: StudyEffects) {
    */
   async function sendToClaude(visibleMessages: Msg[]) {
     setIsRunning(true);
+    setError(null);
+    setLastSent(visibleMessages);
 
     const apiMessages = buildApiMessages(visibleMessages);
     const assistantId = crypto.randomUUID();
@@ -67,10 +73,16 @@ export function useConversation(effects: StudyEffects) {
       }
     } catch (err) {
       console.error("[stream] error", err);
-      const message = err instanceof Error ? err.message : String(err);
-      replaceAssistantContent(assistantId, [
-        { type: "text", text: `Error: ${message}` },
-      ]);
+      setError(describeError(err));
+      // Keep whatever the turn produced so far; drop the bubble only if empty.
+      if (accumulated.length === 0) {
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+      } else {
+        replaceAssistantContent(
+          assistantId,
+          accumulated.map((p) => ({ ...p })),
+        );
+      }
     } finally {
       console.log("[stream] finally — setIsRunning(false)");
       setIsRunning(false);
@@ -100,7 +112,27 @@ export function useConversation(effects: StudyEffects) {
     });
   }
 
-  return { messages, setMessages, isRunning, sendToClaude, sendUserText, onNew };
+  /** Re-sends the history that last failed. */
+  async function retry() {
+    if (isRunning || !lastSent) return;
+    await sendToClaude(lastSent);
+  }
+
+  function dismissError() {
+    setError(null);
+  }
+
+  return {
+    messages,
+    setMessages,
+    isRunning,
+    error,
+    retry,
+    dismissError,
+    sendToClaude,
+    sendUserText,
+    onNew,
+  };
 }
 
 export type Conversation = ReturnType<typeof useConversation>;

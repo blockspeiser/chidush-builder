@@ -59,6 +59,9 @@ function StudyApp({ user }: { user: User }) {
         isRunning={conversation.isRunning}
         onRewriteNarrative={handleRewriteNarrative}
         loadEpoch={session.loadEpoch}
+        error={conversation.error}
+        onRetry={() => void conversation.retry()}
+        onDismissError={conversation.dismissError}
         headerRight={
           <div className="flex items-center gap-2">
             <NewSessionButton

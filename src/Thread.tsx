@@ -1050,6 +1050,47 @@ function loadFontWeight(name: string, weight: number) {
 
 const FONT_WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 
+function ErrorBanner({
+  message,
+  onRetry,
+  onDismiss,
+  retryDisabled,
+}: {
+  message: string;
+  onRetry?: () => void;
+  onDismiss?: () => void;
+  retryDisabled?: boolean;
+}) {
+  return (
+    <div
+      role="alert"
+      className="mb-3 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-stone-800"
+    >
+      <span className="flex-1">{message}</span>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={retryDisabled}
+          className="shrink-0 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-stone-800 ring-1 ring-stone-300 transition hover:bg-stone-50 disabled:opacity-50"
+        >
+          Retry
+        </button>
+      )}
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="shrink-0 rounded-md px-1.5 text-stone-500 transition hover:text-stone-800"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Thread({
   sheet,
   narrative,
@@ -1059,6 +1100,9 @@ export function Thread({
   isRunning = false,
   onRewriteNarrative,
   loadEpoch = 0,
+  error = null,
+  onRetry,
+  onDismissError,
 }: {
   sheet: SourceSheet;
   narrative: NarrativeSheet | null;
@@ -1068,6 +1112,9 @@ export function Thread({
   isRunning?: boolean;
   onRewriteNarrative?: () => void;
   loadEpoch?: number;
+  error?: string | null;
+  onRetry?: () => void;
+  onDismissError?: () => void;
 }) {
   const [fontName, setFontName] = useState<string>("EB Garamond");
   const [titleSize, setTitleSize] = useState<number>(26);
@@ -1400,6 +1447,14 @@ export function Thread({
             </ThreadPrimitive.Viewport>
 
             <div className="border-t border-stone-200 bg-[#f7f1de] px-3 py-3 lg:px-6 lg:py-4">
+              {error && (
+                <ErrorBanner
+                  message={error}
+                  onRetry={onRetry}
+                  onDismiss={onDismissError}
+                  retryDisabled={isRunning}
+                />
+              )}
               <ComposerPrimitive.Root className="flex items-end gap-2 rounded-2xl border border-stone-300 bg-white px-3 py-2 focus-within:border-amber-800 lg:px-4">
                 <ComposerPrimitive.Input
                   autoFocus
