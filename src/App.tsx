@@ -8,11 +8,27 @@ import { useConversation } from "./chat/useConversation";
 import { useStudyState } from "./study/useStudyState";
 import { useSessionPersistence } from "./session/useSessionPersistence";
 import { NewSessionButton, SessionsButton } from "./session/SessionButtons";
+import { useAuthUser } from "./auth/useAuthUser";
+import { SignInScreen } from "./auth/SignInScreen";
+import { SignOutButton } from "./auth/SignOutButton";
+import type { User } from "firebase/auth";
 
 const REWRITE_NARRATIVE_PROMPT =
   "Please draft (or rewrite) the narrative sheet now based on our conversation so far — call update_narrative_sheet with whatever is reasonable given what we have. Don't ask for confirmation, just produce the draft.";
 
 export default function App() {
+  const authState = useAuthUser();
+  if (authState.status === "loading") {
+    return <div className="min-h-screen bg-[#fbf8ef]" />;
+  }
+  if (authState.status === "signed-out") {
+    return <SignInScreen />;
+  }
+  // Keyed on uid so a different account starts with fresh state.
+  return <StudyApp key={authState.user.uid} user={authState.user} />;
+}
+
+function StudyApp({ user }: { user: User }) {
   const study = useStudyState();
   const conversation = useConversation(study.effects);
   const session = useSessionPersistence(conversation, study);
@@ -53,6 +69,7 @@ export default function App() {
               currentId={session.sessionIdRef.current}
               onLoad={session.loadSession}
             />
+            <SignOutButton user={user} />
           </div>
         }
       />

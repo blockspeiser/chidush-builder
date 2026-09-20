@@ -5,22 +5,13 @@ says what, if anything, Brett needs to do in GCP right now.
 
 ## Your next GCP action
 
-**Status: READY FOR YOU — steps 4, 5 and 6 remain (checked 2026-09-20).**
+**Status: nothing needed until phase 5.** GCP steps 1–6 are complete
+and verified. Steps 7–8 come with the first deploy.
 
-Verified from the CLI: billing is linked, all six APIs are enabled, the
-Firebase web config is in `.env`, and `gcloud` defaults to
-`chidush-builder`. Still to do:
-
-- **Step 1b (Console):** confirm a budget exists — the CLI can't check this.
-- **Step 4 (Console):** create the Firestore database and publish rules.
-- **Step 5 (CLI):** create the `anthropic-api-key` secret.
-- **Step 6 (CLI):** rerun `gcloud auth application-default login` — the
-  existing local credential is stale — then create the `chidush-run`
-  service account and its two role bindings. `GOOGLE_CLOUD_PROJECT` is
-  already in `.env`.
-
-Claude can run steps 5 and 6 from this machine if you say so; they only
-create resources and can be undone.
+Known quirk seen 2026-09-20: the very first Google sign-in on a fresh
+browser landed back on the sign-in screen; the second attempt worked.
+Watch for it in prod; if it recurs, the fix is to proxy Firebase's
+`/__/auth/*` handler through our own domain.
 
 ## Target shape
 
@@ -73,15 +64,17 @@ Each phase is one commit and is testable locally before moving on.
   schemas moved to `shared/`. Vite proxies `/api`. Key is server-only.
   Verified: greeting, multi-tool turn, autosave all flow through the proxy;
   built bundle contains no key. `npm run dev` starts both processes.
-- [ ] **Phase 2 — Firebase Auth.**
-  Sign-in screen; ID token on every request; server verifies with Admin SDK.
-  Test: signed out → all API 401; signed in → works.
-  *Needs GCP steps 1–3 and 6 (ADC login).*
-- [ ] **Phase 3 — Firestore sessions.**
-  Replace file middleware with Firestore routes scoped to uid. Client
-  `session/api.ts` changes URLs/headers only.
-  Test: create, autosave, list, reload from URL, switch.
-  *Needs GCP steps 4 and 6.*
+- [x] **Phase 2 — Firebase Auth.** *Done 2026-09-20.*
+  Google sign-in screen, sign-out avatar in the header, ID token attached to
+  every `/api` call (including the Claude stream via a custom SDK fetch).
+  Server `requireAuth` middleware verifies tokens; `/api/health` stays open.
+  Verified: 401 when signed out; full flow works signed in.
+- [x] **Phase 3 — Firestore sessions.** *Done 2026-09-20.*
+  `users/{uid}/sessions/{id}` with the saved JSON stored verbatim plus
+  denormalized title/savedAt; `users/{uid}` profile touched once per
+  process. 900 KB cap per session (Firestore 1 MiB doc limit). File store
+  removed. Verified with `npm run check:firestore` and live use.
+  `npm run peek:users` lists what is in the database.
 - [ ] **Phase 4 — Usage counters + limits.**
   Parse usage from final `message_delta`, transactional daily counter,
   cap check before proxy, one-turn-at-a-time. Client renders limit errors.
@@ -103,7 +96,7 @@ into a terminal). Steps 1–6 unblock phases 2–3. Steps 7–8 happen during
 phase 5.
 
 - [x] **1a. Create the project.** *Done — `chidush-builder`.*
-- [~] **1b. Billing (Console).** *Billing linked. Budget not yet verified.* https://console.cloud.google.com/billing/linkedaccount?project=chidush-builder
+- [x] **1b. Billing (Console).** *Billing linked; budget per Brett.* https://console.cloud.google.com/billing/linkedaccount?project=chidush-builder
   → link a billing account. Then https://console.cloud.google.com/billing/budgets
   → Create budget → scope it to project `chidush-builder`, pick a monthly
   amount you're comfortable with, alert thresholds 50% and 100%.
@@ -137,7 +130,7 @@ phase 5.
      VITE_FIREBASE_APP_ID=<appId>
      ```
   `localhost` is already an authorized domain, so local sign-in works.
-- [ ] **4. Firestore (Console).**
+- [x] **4. Firestore (Console).** *Done — database ID is `chidush-builder-db` (not `(default)`), so the server reads `FIRESTORE_DATABASE_ID` from `.env` and the deploy command sets it.*
   1. https://console.firebase.google.com/project/chidush-builder/firestore
      → Create database → location `us-central1` (nam5 multi-region is
      also fine) → **Native mode** → start in **production mode** → Create.
@@ -151,12 +144,12 @@ phase 5.
     }
   }
   ```
-- [ ] **5. Secret Manager (CLI).** Reads the key from `.env` so it never
+- [x] **5. Secret Manager (CLI).** *Done.* Reads the key from `.env` so it never
   appears in your shell history:
   ```bash
   grep '^ANTHROPIC_API_KEY=' .env | cut -d= -f2- | tr -d '\n' | gcloud secrets create anthropic-api-key --data-file=- --project chidush-builder
   ```
-- [ ] **6. Local credentials + service account (CLI).**
+- [x] **6. Local credentials + service account (CLI).** *Done.*
   Local dev credentials (opens a browser; sign in with the same Google
   account that owns the project):
   ```bash
@@ -175,7 +168,7 @@ phase 5.
   `GOOGLE_CLOUD_PROJECT=chidush-builder` is already in `.env`.
 - [ ] **7. Deploy (CLI, during phase 5).**
   ```bash
-  gcloud run deploy chidush --source . --region us-central1 --project chidush-builder --service-account chidush-run@chidush-builder.iam.gserviceaccount.com --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest --set-env-vars GOOGLE_CLOUD_PROJECT=chidush-builder --allow-unauthenticated --max-instances 3 --timeout 600 --concurrency 20
+  gcloud run deploy chidush --source . --region us-central1 --project chidush-builder --service-account chidush-run@chidush-builder.iam.gserviceaccount.com --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest --set-env-vars GOOGLE_CLOUD_PROJECT=chidush-builder,FIRESTORE_DATABASE_ID=chidush-builder-db --allow-unauthenticated --max-instances 3 --timeout 600 --concurrency 20
   ```
 - [ ] **8. Post-deploy (Console).**
   1. Copy the `https://chidush-....run.app` URL the deploy prints.
@@ -193,6 +186,7 @@ phase 5.
 ```
 ANTHROPIC_API_KEY=...            # server only
 GOOGLE_CLOUD_PROJECT=chidush-builder  # server only, from GCP step 6
+FIRESTORE_DATABASE_ID=chidush-builder-db
 VITE_FIREBASE_API_KEY=...        # client, from GCP step 3
 VITE_FIREBASE_AUTH_DOMAIN=...
 VITE_FIREBASE_PROJECT_ID=...

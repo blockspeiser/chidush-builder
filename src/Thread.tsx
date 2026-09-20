@@ -1,3 +1,4 @@
+import { authFetch } from "./auth/authFetch";
 import {
   ComposerPrimitive,
   MessagePrimitive,
@@ -35,7 +36,7 @@ function useSefariaText(ref: string): {
     let cancelled = false;
     setData(null);
     setError(null);
-    fetch(`/api/sefaria/texts/${encodeURIComponent(ref)}`)
+    authFetch(`/api/sefaria/texts/${encodeURIComponent(ref)}`)
       .then((r) => {
         if (!r.ok) throw new Error(`texts ${r.status}`);
         return r.json();

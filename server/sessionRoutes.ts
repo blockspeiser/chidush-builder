@@ -1,17 +1,25 @@
-// HTTP surface for saved sessions.
+// HTTP surface for saved sessions. All routes run behind requireAuth.
 
 import { Hono } from "hono";
-import { isValidSessionId, type SessionStore } from "./sessionStore";
+import type { AuthVariables } from "./auth";
+import {
+  isValidSessionId,
+  MAX_SESSION_BYTES,
+  type SessionStore,
+} from "./sessionStore";
+import { touchUser } from "./users";
 
 export function sessionRoutes(store: SessionStore) {
-  const app = new Hono();
+  const app = new Hono<{ Variables: AuthVariables }>();
 
-  app.get("/", async (c) => c.json({ sessions: await store.list() }));
+  app.get("/", async (c) => {
+    return c.json({ sessions: await store.list(c.get("uid")) });
+  });
 
   app.get("/:id", async (c) => {
     const id = c.req.param("id");
     if (!isValidSessionId(id)) return c.json({ error: "invalid id" }, 400);
-    const json = await store.get(id);
+    const json = await store.get(c.get("uid"), id);
     if (json === null) return c.json({ error: "not found" }, 404);
     return c.body(json, 200, { "Content-Type": "application/json" });
   });
@@ -20,12 +28,17 @@ export function sessionRoutes(store: SessionStore) {
     const id = c.req.param("id");
     if (!isValidSessionId(id)) return c.json({ error: "invalid id" }, 400);
     const body = await c.req.text();
+    if (Buffer.byteLength(body) > MAX_SESSION_BYTES) {
+      return c.json({ error: "session too large to save" }, 413);
+    }
     try {
       JSON.parse(body);
     } catch {
       return c.json({ error: "invalid JSON" }, 400);
     }
-    await store.put(id, body);
+    const uid = c.get("uid");
+    await store.put(uid, id, body);
+    void touchUser(uid, c.get("email"));
     return c.json({ ok: true, id });
   });
 

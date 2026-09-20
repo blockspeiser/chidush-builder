@@ -18,5 +18,6 @@ export const env = {
   port: Number(process.env.PORT ?? 8787),
   isProduction: process.env.NODE_ENV === "production",
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
-  sessionsDir: process.env.SESSIONS_DIR ?? "sessions",
+  googleCloudProject: required("GOOGLE_CLOUD_PROJECT"),
+  firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID ?? "(default)",
 };

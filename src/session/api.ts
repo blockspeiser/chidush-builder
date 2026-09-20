@@ -2,6 +2,7 @@
 
 const SESSIONS = "/api/sessions";
 
+import { authFetch } from "../auth/authFetch";
 import type { Msg } from "../chat/types";
 import type { StudySnapshot } from "../study/useStudyState";
 
@@ -43,7 +44,7 @@ export function replaceUrl(path: string) {
 
 /** Throws on a non-2xx response (including 404). */
 export async function fetchSession(id: string): Promise<SavedSession> {
-  const resp = await fetch(sessionUrl(id));
+  const resp = await authFetch(sessionUrl(id));
   if (!resp.ok) throw new Error(`load ${resp.status}`);
   return (await resp.json()) as SavedSession;
 }
@@ -52,7 +53,7 @@ export async function saveSession(
   id: string,
   data: Omit<SavedSession, "savedAt">,
 ): Promise<void> {
-  await fetch(sessionUrl(id), {
+  await authFetch(sessionUrl(id), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -63,7 +64,7 @@ export async function saveSession(
 }
 
 export async function listSessions(): Promise<SessionListItem[]> {
-  const resp = await fetch(SESSIONS);
+  const resp = await authFetch(SESSIONS);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const data = (await resp.json()) as { sessions?: SessionListItem[] };
   return Array.isArray(data.sessions) ? data.sessions : [];

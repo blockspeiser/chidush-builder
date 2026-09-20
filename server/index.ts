@@ -6,18 +6,22 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { anthropicProxy } from "./anthropicProxy";
+import { requireAuth } from "./auth";
 import { env } from "./env";
 import { sefariaProxy } from "./sefariaProxy";
 import { sessionRoutes } from "./sessionRoutes";
-import { FileSessionStore } from "./sessionStore";
+import { FirestoreSessionStore } from "./sessionStore";
 
 const app = new Hono();
 app.use(logger());
 
 app.get("/api/health", (c) => c.json({ ok: true }));
+
+// Everything under /api except health requires a signed-in user.
+app.use("/api/*", requireAuth);
 app.route("/api/anthropic", anthropicProxy);
 app.route("/api/sefaria", sefariaProxy);
-app.route("/api/sessions", sessionRoutes(new FileSessionStore(env.sessionsDir)));
+app.route("/api/sessions", sessionRoutes(new FirestoreSessionStore()));
 
 app.onError((err, c) => {
   console.error("[server] unhandled", err);

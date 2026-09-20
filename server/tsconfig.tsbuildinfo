@@ -1,1 +1,1 @@
-{"root":["./anthropicproxy.ts","./env.ts","./index.ts","./sefariaproxy.ts","./sessionroutes.ts","./sessionstore.ts","../shared/modelconfig.ts","../shared/notessheetprompt.ts","../shared/systemprompt.ts","../shared/tools.ts"],"version":"5.6.3"}
+{"root":["./anthropicproxy.ts","./auth.ts","./env.ts","./index.ts","./sefariaproxy.ts","./sessionroutes.ts","./sessionstore.ts","./users.ts","../shared/modelconfig.ts","../shared/notessheetprompt.ts","../shared/systemprompt.ts","../shared/tools.ts"],"version":"5.6.3"}
