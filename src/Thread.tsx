@@ -333,6 +333,33 @@ const findScrollableAncestor = (el: HTMLElement): HTMLElement | null => {
   return null;
 };
 
+/**
+ * Shown while the model is working but nothing visible is streaming yet:
+ * before the first block (Opus 5 thinks before it writes) and between a
+ * tool call and the text that follows it.
+ */
+const ThinkingIndicator = () => {
+  const isRunning = useMessage((s) => s.status?.type === "running");
+  const streamingText = useMessage((s) => {
+    const last = s.content[s.content.length - 1];
+    return last?.type === "text" && last.text.length > 0;
+  });
+  if (!isRunning || streamingText) return null;
+  return (
+    <div
+      className="flex items-center gap-2 py-1 text-sm text-stone-500"
+      aria-live="polite"
+    >
+      <span>Thinking</span>
+      <span className="flex gap-1" aria-hidden="true">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400" />
+      </span>
+    </div>
+  );
+};
+
 const AssistantMessage = () => {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -392,6 +419,7 @@ const AssistantMessage = () => {
               },
             }}
           />
+          <ThinkingIndicator />
         </div>
       </MessagePrimitive.Root>
     </div>
