@@ -400,7 +400,7 @@ const AssistantMessage = () => {
   return (
     <div ref={rootRef}>
       <MessagePrimitive.Root className="grid grid-cols-[auto_1fr] gap-x-3 py-3">
-        <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-amber-800 text-center text-base font-semibold leading-8 text-amber-50">
+        <div className="mt-1 h-8 w-8 shrink-0 rounded-full bg-amber-800 text-center text-xl font-semibold leading-8 text-amber-50">
           ח
         </div>
         <div className="max-w-[80ch] text-stone-900">
