@@ -655,6 +655,10 @@ const SourceSheetPanel = ({
   const hasNarrative =
     narrative !== null &&
     (narrative.items.length > 0 || (narrative.title ?? "").length > 0);
+  const hasNotesContent =
+    sheet.items.length > 0 || (sheet.title ?? "").length > 0;
+  // Nothing to switch between yet: hide the header on a fresh session.
+  const isEmpty = !hasNotesContent && !hasNarrative && poem === null;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -827,6 +831,7 @@ const SourceSheetPanel = ({
               : view === "poem" && onRewritePoem
                 ? { onClick: onRewritePoem, exists: poem !== null }
                 : null;
+          if (isEmpty) return null;
           return (
             <div className="sticky top-0 z-10 hidden bg-white px-4 pt-6 lg:block lg:px-12">
             <div className="flex items-end justify-between border-b border-stone-200">
