@@ -624,6 +624,34 @@ const SheetBar = ({
   );
 };
 
+/** Empty state for the Narrative and Poem views, with a one-click draft. */
+const EmptyDraft = ({
+  onDraft,
+  drafting,
+  disabled,
+}: {
+  onDraft?: () => void;
+  drafting: boolean;
+  disabled: boolean;
+}) => (
+  <div className="mt-6 flex flex-col items-center gap-4 text-center">
+    <p className="text-lg leading-relaxed text-stone-400 italic">
+      Nothing drafted yet.
+    </p>
+    {onDraft && (
+      <button
+        type="button"
+        onClick={onDraft}
+        disabled={disabled}
+        className="inline-flex items-center gap-2 rounded-md bg-[#f7f1de] px-4 py-2 text-base text-stone-800 ring-1 ring-stone-300/60 transition hover:bg-[#f1e8cc] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <PencilIcon />
+        {drafting ? "Drafting…" : "Draft now"}
+      </button>
+    )}
+  </div>
+);
+
 const NarrativeView = ({ narrative }: { narrative: NarrativeSheet }) => (
   <>
     {narrative.items.length === 0 ? (
@@ -667,8 +695,9 @@ const SourceSheetPanel = ({
   sheet,
   narrative,
   poem,
-  // isRunning / onRewriteNarrative / onRewritePoem stay in the props so the
-  // Draft/Rewrite action can return; the pill does not show it for now.
+  isRunning = false,
+  onRewriteNarrative,
+  onRewritePoem,
   drafting = null,
   view,
   onViewChange,
@@ -905,17 +934,21 @@ const SourceSheetPanel = ({
             narrative && hasNarrative ? (
               <NarrativeView narrative={narrative} />
             ) : (
-              <div className="mt-3 text-center text-lg leading-relaxed text-stone-400 italic">
-                Nothing drafted yet.
-              </div>
+              <EmptyDraft
+                onDraft={onRewriteNarrative}
+                drafting={drafting === "narrative"}
+                disabled={isRunning || drafting !== null}
+              />
             )
           ) : view === "poem" ? (
             poem ? (
               <PoemView poem={poem} />
             ) : (
-              <div className="mt-3 text-center text-lg leading-relaxed text-stone-400 italic">
-                No poem yet.
-              </div>
+              <EmptyDraft
+                onDraft={onRewritePoem}
+                drafting={drafting === "poem"}
+                disabled={isRunning || drafting !== null}
+              />
             )
           ) : (
             <>
