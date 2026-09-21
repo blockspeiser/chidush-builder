@@ -832,7 +832,7 @@ const SourceSheetPanel = ({
                 : null;
           if (!rewrite && !showToggle) return null;
           return (
-            <div className="hidden px-4 pt-6 lg:block lg:px-12">
+            <div className="sticky top-0 z-10 hidden bg-white px-4 pt-6 lg:block lg:px-12">
             <div className="flex items-end justify-between border-b border-stone-200">
               {showToggle ? (
                 <SheetTabs
