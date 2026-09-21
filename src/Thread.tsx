@@ -109,11 +109,7 @@ const tokenSetForDiff = (s: string): Set<string> => {
     .replace(/[*_~`]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  return new Set(
-    normalized
-      .split(/[^a-z0-9֐-׿]+/)
-      .filter((t) => t.length > 2),
-  );
+  return new Set(normalized.split(/[^a-z0-9֐-׿]+/).filter((t) => t.length > 2));
 };
 
 const flashAnimation = (el: Element) => {
@@ -199,7 +195,10 @@ const markdownComponents = {
   ),
   li: (props: ComponentPropsWithoutRef<"li">) => <li {...props} />,
   h1: (props: ComponentPropsWithoutRef<"h1">) => (
-    <h1 className="mt-3 mb-2 text-2xl font-semibold text-stone-800" {...props} />
+    <h1
+      className="mt-3 mb-2 text-2xl font-semibold text-stone-800"
+      {...props}
+    />
   ),
   h2: (props: ComponentPropsWithoutRef<"h2">) => (
     <h2 className="mt-3 mb-2 text-xl font-semibold text-stone-800" {...props} />
@@ -256,7 +255,7 @@ const TextSearchToolPart: ToolCallContentPartComponent = ({ toolCallId }) => {
     if (p.type !== "tool-call" || p.toolName !== "text_search") return [];
     const query =
       typeof (p.args as { query?: unknown })?.query === "string"
-        ? ((p.args as { query: string }).query)
+        ? (p.args as { query: string }).query
         : "";
     return [
       {
@@ -274,7 +273,10 @@ const TextSearchToolPart: ToolCallContentPartComponent = ({ toolCallId }) => {
 
   const pending = searches.filter((s) => !s.done);
   if (pending.length > 0) {
-    const queries = pending.map((s) => s.query).filter(Boolean).join(", ");
+    const queries = pending
+      .map((s) => s.query)
+      .filter(Boolean)
+      .join(", ");
     return (
       <div
         dir="ltr"
@@ -285,8 +287,7 @@ const TextSearchToolPart: ToolCallContentPartComponent = ({ toolCallId }) => {
           Searching
           {queries ? (
             <>
-              :{" "}
-              <bdi style={{ unicodeBidi: "isolate" }}>{queries}</bdi>
+              : <bdi style={{ unicodeBidi: "isolate" }}>{queries}</bdi>
             </>
           ) : (
             "…"
@@ -426,23 +427,15 @@ const AssistantMessage = () => {
 
 const SheetItem = ({ item }: { item: SourceSheetItem }) => {
   if (item.type === "citation") {
-    return (
-      <SefariaTextBlock sefRef={item.reference} />
-    );
+    return <SefariaTextBlock sefRef={item.reference} />;
   }
   return (
     <section className="space-y-3">
-      <h3 className="text-lg font-semibold text-stone-800">
-        {item.heading}
-      </h3>
+      <h3 className="text-lg font-semibold text-stone-800">{item.heading}</h3>
       {item.bullets && item.bullets.length > 0 && (
         <ul className="list-disc space-y-1.5 pl-6 text-lg leading-relaxed text-stone-800">
           {item.bullets.map((b, i) => (
-            <li
-              key={i}
-              data-bullet-idx={i}
-              className="rounded -mx-1 px-1"
-            >
+            <li key={i} data-bullet-idx={i} className="rounded -mx-1 px-1">
               <ReactMarkdown components={inlineMarkdownComponents}>
                 {b}
               </ReactMarkdown>
@@ -539,7 +532,7 @@ const SheetBar = ({
       >
         Notes
       </button>
-      <div className={tab(view === primary)}>
+      <div className={`relative ${tab(view === primary)}`}>
         <button type="button" onClick={() => onChange(primary)}>
           {label(primary)}
         </button>
@@ -568,63 +561,70 @@ const SheetBar = ({
             />
           </svg>
         </button>
-      </div>
-      {menuOpen && (
-        <div
-          role="menu"
-          className="absolute top-full right-0 z-20 mt-3 w-40 rounded-lg bg-[#fdfaf2] py-1.5 text-base shadow-[0_6px_18px_rgba(60,40,10,0.12)] ring-1 ring-stone-300/60"
-        >
-          {/* Tail pointing up at the caret */}
-          <span
-            aria-hidden="true"
-            className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 rounded-[2px] bg-[#fdfaf2] ring-1 ring-stone-300/60 [clip-path:polygon(0_0,100%_0,0_100%)]"
-          />
-          {(["narrative", "poem"] as PrimaryView[]).map((v) => {
-            const active = v === primary;
-            return (
-              <button
-                key={v}
-                type="button"
-                role="menuitemradio"
-                aria-checked={active}
-                onClick={() => {
-                  onChange(v);
-                  setMenuOpen(false);
-                }}
-                className={`flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left transition hover:bg-[#f7f1de] ${
-                  active ? "font-semibold text-stone-900" : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    active ? "bg-[#a3712a]" : "bg-transparent"
+        {menuOpen && (
+          <div
+            role="menu"
+            // left offset = item padding (14px) + dot (6px) + gap (10px), so item
+            // labels start exactly where the tab label starts.
+            className="absolute top-full left-[-30px] z-20 mt-3 w-max rounded-lg bg-[#fdfaf2] py-1.5 text-base font-normal shadow-[0_6px_18px_rgba(60,40,10,0.12)] ring-1 ring-stone-300/60"
+          >
+            {/* Tail pointing up at the caret */}
+            <span
+              aria-hidden="true"
+              className="absolute -top-1.5 right-3 h-3 w-3 rotate-45 rounded-[2px] bg-[#fdfaf2] ring-1 ring-stone-300/60 [clip-path:polygon(0_0,100%_0,0_100%)]"
+            />
+            {(["narrative", "poem"] as PrimaryView[]).map((v) => {
+              const active = v === primary;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  onClick={() => {
+                    onChange(v);
+                    setMenuOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2.5 py-1.5 pr-5 pl-3.5 text-left whitespace-nowrap transition hover:bg-[#f7f1de] ${
+                    active
+                      ? "font-semibold text-stone-900"
+                      : "text-stone-600 hover:text-stone-900"
                   }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      active ? "bg-[#a3712a]" : "bg-transparent"
+                    }`}
+                  />
+                  {label(v)}
+                </button>
+              );
+            })}
+            {action && (
+              <>
+                <div
+                  className="my-1.5 h-px bg-stone-300/60"
+                  aria-hidden="true"
                 />
-                {label(v)}
-              </button>
-            );
-          })}
-          {action && (
-            <>
-              <div className="my-1.5 h-px bg-stone-300/60" aria-hidden="true" />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  action.onClick();
-                }}
-                disabled={action.disabled}
-                className="flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left text-[#8a6a2b] transition hover:bg-[#f7f1de] hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <PencilIcon />
-                {action.label}
-              </button>
-            </>
-          )}
-        </div>
-      )}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    action.onClick();
+                  }}
+                  disabled={action.disabled}
+                  className="flex w-full items-center gap-2.5 py-1.5 pr-5 pl-3.5 text-left whitespace-nowrap text-[#8a6a2b] transition hover:bg-[#f7f1de] hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <PencilIcon />
+                  {action.label}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -744,8 +744,9 @@ const SourceSheetPanel = ({
   useEffect(() => {
     const prevCitations = new Set(
       prevItemsRef.current
-        .filter((i): i is Extract<SourceSheetItem, { type: "citation" }> =>
-          i.type === "citation",
+        .filter(
+          (i): i is Extract<SourceSheetItem, { type: "citation" }> =>
+            i.type === "citation",
         )
         .map((i) => i.reference),
     );
@@ -838,10 +839,7 @@ const SourceSheetPanel = ({
             smartScrollIntoView(el, container, `citation #${idx} (resized)`);
           });
           observer.observe(el);
-          const timeout = window.setTimeout(
-            () => observer.disconnect(),
-            3000,
-          );
+          const timeout = window.setTimeout(() => observer.disconnect(), 3000);
           cleanupFns.push(() => {
             observer.disconnect();
             window.clearTimeout(timeout);
@@ -905,10 +903,22 @@ const SourceSheetPanel = ({
               className="flex items-center gap-2 text-sm text-stone-500"
             >
               <span>Drafting</span>
-              <span className="flex h-5 items-center gap-1.5" aria-hidden="true">
-                <span className="thinking-dot" style={{ animationDelay: "0s" }} />
-                <span className="thinking-dot" style={{ animationDelay: "0.15s" }} />
-                <span className="thinking-dot" style={{ animationDelay: "0.3s" }} />
+              <span
+                className="flex h-5 items-center gap-1.5"
+                aria-hidden="true"
+              >
+                <span
+                  className="thinking-dot"
+                  style={{ animationDelay: "0s" }}
+                />
+                <span
+                  className="thinking-dot"
+                  style={{ animationDelay: "0.15s" }}
+                />
+                <span
+                  className="thinking-dot"
+                  style={{ animationDelay: "0.3s" }}
+                />
               </span>
             </div>
           )}
@@ -939,16 +949,22 @@ const SourceSheetPanel = ({
                       primary={primary}
                       onChange={onViewChange}
                       action={
-                        view === "narrative" && hasNarrative && onRewriteNarrative
+                        view === "narrative" &&
+                        hasNarrative &&
+                        onRewriteNarrative
                           ? {
                               onClick: onRewriteNarrative,
-                              label: drafting === "narrative" ? "Drafting…" : "Rewrite",
+                              label:
+                                drafting === "narrative"
+                                  ? "Drafting…"
+                                  : "Rewrite",
                               disabled: isRunning || drafting !== null,
                             }
                           : view === "poem" && poem && onRewritePoem
                             ? {
                                 onClick: onRewritePoem,
-                                label: drafting === "poem" ? "Drafting…" : "Rewrite",
+                                label:
+                                  drafting === "poem" ? "Drafting…" : "Rewrite",
                                 disabled: isRunning || drafting !== null,
                               }
                             : null
@@ -1042,10 +1058,7 @@ const PhaseIndicator = ({ phase }: { phase: number }) => {
           ? "bg-[#e8c8a4]"
           : "bg-stone-200";
     elements.push(
-      <div
-        key={`dot-${step}`}
-        className="group relative h-3 w-3 shrink-0"
-      >
+      <div key={`dot-${step}`} className="group relative h-3 w-3 shrink-0">
         <div className={`h-full w-full rounded-full ${dotColor}`} />
         <span
           role="tooltip"
@@ -1397,155 +1410,164 @@ export function Thread({
           </div>
         </div>
         <div />
-        <div ref={menuRef} className="relative flex items-center justify-end gap-2 lg:pr-16">
+        <div
+          ref={menuRef}
+          className="relative flex items-center justify-end gap-2 lg:pr-16"
+        >
           {headerRight}
-          {logotypeMenuUnlocked && (<>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((o) => !o)}
-            className="flex items-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
-          >
-            <span style={{ fontFamily }}>{fontName}</span>
-            <span className="text-stone-400">
-              · {titleSize}px · {titleWeight}
-            </span>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              aria-hidden="true"
-              className="text-stone-400"
-            >
-              <path
-                d="M3 4.5 L6 7.5 L9 4.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          {menuOpen && (
-            <div className="absolute top-full right-16 z-50 mt-2 w-72 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
-              <div className="border-b border-stone-200 bg-stone-50">
-                <div className="flex items-center justify-between gap-2 px-3 py-2">
-                  <span className="text-xs font-medium text-stone-500 uppercase">
-                    Size
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTitleSize((s) => Math.max(10, s - 2))}
-                      className="flex h-6 w-6 items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                      aria-label="Decrease size"
-                    >
-                      −
-                    </button>
-                    <span className="w-10 text-center font-mono text-sm text-stone-700 tabular-nums">
-                      {titleSize}px
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setTitleSize((s) => Math.min(96, s + 2))}
-                      className="flex h-6 w-6 items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                      aria-label="Increase size"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-2 px-3 pt-1 pb-2">
-                  <span className="text-xs font-medium text-stone-500 uppercase">
-                    Weight
-                  </span>
-                  <div className="flex flex-wrap items-center justify-end gap-1">
-                    {FONT_WEIGHTS.map((w) => (
-                      <button
-                        key={w}
-                        type="button"
-                        onClick={() => setTitleWeight(w)}
-                        className={`flex h-6 w-7 items-center justify-center rounded border text-xs tabular-nums ${
-                          titleWeight === w
-                            ? "border-amber-700 bg-amber-50 text-stone-800"
-                            : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
-                        }`}
-                        style={{ fontWeight: w }}
-                        aria-label={`Weight ${w}`}
-                      >
-                        {w}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-2 px-3 pt-1 pb-2">
-                  <span className="text-xs font-medium text-stone-500 uppercase">
-                    Color
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setTitleAccent(false)}
-                      className={`flex h-6 items-center gap-1.5 rounded border px-2 text-xs ${
-                        !titleAccent
-                          ? "border-amber-700 bg-amber-50 text-stone-800"
-                          : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
-                      }`}
-                      aria-pressed={!titleAccent}
-                    >
-                      <span
-                        className="inline-block h-3 w-3 rounded-full"
-                        style={{ background: "var(--color-stone-800)" }}
-                      />
-                      Black
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTitleAccent(true)}
-                      className={`flex h-6 items-center gap-1.5 rounded border px-2 text-xs ${
-                        titleAccent
-                          ? "border-amber-700 bg-amber-50 text-stone-800"
-                          : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
-                      }`}
-                      aria-pressed={titleAccent}
-                    >
-                      <span
-                        className="inline-block h-3 w-3 rounded-full"
-                        style={{ background: "oklch(0.473 0.137 46.201)" }}
-                      />
-                      Accent
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="max-h-80 overflow-y-auto py-1">
-                {POPULAR_FONTS.map((name) => {
-                  const isActive = name === fontName;
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setFontName(name)}
-                      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm hover:bg-stone-50 ${
-                        isActive ? "bg-amber-50" : ""
-                      }`}
-                    >
-                      <span
-                        className="truncate text-base text-stone-800"
-                        style={{ fontFamily: fontStack(name) }}
-                      >
-                        {name}
+          {logotypeMenuUnlocked && (
+            <>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50"
+              >
+                <span style={{ fontFamily }}>{fontName}</span>
+                <span className="text-stone-400">
+                  · {titleSize}px · {titleWeight}
+                </span>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  aria-hidden="true"
+                  className="text-stone-400"
+                >
+                  <path
+                    d="M3 4.5 L6 7.5 L9 4.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              {menuOpen && (
+                <div className="absolute top-full right-16 z-50 mt-2 w-72 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
+                  <div className="border-b border-stone-200 bg-stone-50">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2">
+                      <span className="text-xs font-medium text-stone-500 uppercase">
+                        Size
                       </span>
-                      <span className="shrink-0 text-xs text-stone-400">
-                        {name}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTitleSize((s) => Math.max(10, s - 2))
+                          }
+                          className="flex h-6 w-6 items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                          aria-label="Decrease size"
+                        >
+                          −
+                        </button>
+                        <span className="w-10 text-center font-mono text-sm text-stone-700 tabular-nums">
+                          {titleSize}px
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTitleSize((s) => Math.min(96, s + 2))
+                          }
+                          className="flex h-6 w-6 items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                          aria-label="Increase size"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 px-3 pt-1 pb-2">
+                      <span className="text-xs font-medium text-stone-500 uppercase">
+                        Weight
                       </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                        {FONT_WEIGHTS.map((w) => (
+                          <button
+                            key={w}
+                            type="button"
+                            onClick={() => setTitleWeight(w)}
+                            className={`flex h-6 w-7 items-center justify-center rounded border text-xs tabular-nums ${
+                              titleWeight === w
+                                ? "border-amber-700 bg-amber-50 text-stone-800"
+                                : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
+                            }`}
+                            style={{ fontWeight: w }}
+                            aria-label={`Weight ${w}`}
+                          >
+                            {w}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 px-3 pt-1 pb-2">
+                      <span className="text-xs font-medium text-stone-500 uppercase">
+                        Color
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setTitleAccent(false)}
+                          className={`flex h-6 items-center gap-1.5 rounded border px-2 text-xs ${
+                            !titleAccent
+                              ? "border-amber-700 bg-amber-50 text-stone-800"
+                              : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
+                          }`}
+                          aria-pressed={!titleAccent}
+                        >
+                          <span
+                            className="inline-block h-3 w-3 rounded-full"
+                            style={{ background: "var(--color-stone-800)" }}
+                          />
+                          Black
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTitleAccent(true)}
+                          className={`flex h-6 items-center gap-1.5 rounded border px-2 text-xs ${
+                            titleAccent
+                              ? "border-amber-700 bg-amber-50 text-stone-800"
+                              : "border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
+                          }`}
+                          aria-pressed={titleAccent}
+                        >
+                          <span
+                            className="inline-block h-3 w-3 rounded-full"
+                            style={{ background: "oklch(0.473 0.137 46.201)" }}
+                          />
+                          Accent
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto py-1">
+                    {POPULAR_FONTS.map((name) => {
+                      const isActive = name === fontName;
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => setFontName(name)}
+                          className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm hover:bg-stone-50 ${
+                            isActive ? "bg-amber-50" : ""
+                          }`}
+                        >
+                          <span
+                            className="truncate text-base text-stone-800"
+                            style={{ fontFamily: fontStack(name) }}
+                          >
+                            {name}
+                          </span>
+                          <span className="shrink-0 text-xs text-stone-400">
+                            {name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
-          </>)}
         </div>
       </header>
 
@@ -1672,4 +1694,3 @@ export function Thread({
     </ThreadPrimitive.Root>
   );
 }
-
