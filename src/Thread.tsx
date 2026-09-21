@@ -572,12 +572,12 @@ const SheetBar = ({
       {menuOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-20 mt-3 w-40 rounded-lg bg-[#f7f1de] py-1.5 text-base shadow-[0_6px_18px_rgba(60,40,10,0.12)] ring-1 ring-stone-300/60"
+          className="absolute top-full right-0 z-20 mt-3 w-40 rounded-lg bg-[#fdfaf2] py-1.5 text-base shadow-[0_6px_18px_rgba(60,40,10,0.12)] ring-1 ring-stone-300/60"
         >
           {/* Tail pointing up at the caret */}
           <span
             aria-hidden="true"
-            className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 rounded-[2px] bg-[#f7f1de] ring-1 ring-stone-300/60 [clip-path:polygon(0_0,100%_0,0_100%)]"
+            className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 rounded-[2px] bg-[#fdfaf2] ring-1 ring-stone-300/60 [clip-path:polygon(0_0,100%_0,0_100%)]"
           />
           {(["narrative", "poem"] as PrimaryView[]).map((v) => {
             const active = v === primary;
@@ -591,7 +591,7 @@ const SheetBar = ({
                   onChange(v);
                   setMenuOpen(false);
                 }}
-                className={`flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left transition hover:bg-white/60 ${
+                className={`flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left transition hover:bg-[#f7f1de] ${
                   active ? "font-semibold text-stone-900" : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -616,7 +616,7 @@ const SheetBar = ({
                   action.onClick();
                 }}
                 disabled={action.disabled}
-                className="flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left text-[#8a6a2b] transition hover:bg-white/60 hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left text-[#8a6a2b] transition hover:bg-[#f7f1de] hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <PencilIcon />
                 {action.label}
