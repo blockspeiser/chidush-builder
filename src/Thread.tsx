@@ -653,9 +653,8 @@ const SourceSheetPanel = ({
   sheet,
   narrative,
   poem,
-  isRunning = false,
-  onRewriteNarrative,
-  onRewritePoem,
+  // isRunning / onRewriteNarrative / onRewritePoem stay in the props so the
+  // Draft/Rewrite action can return; the pill does not show it for now.
   drafting = null,
   view,
   onViewChange,
@@ -848,43 +847,7 @@ const SourceSheetPanel = ({
         ref={scrollContainerRef}
         className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
-        {!isEmpty && (
-          <div className="pointer-events-none sticky top-0 z-10 hidden justify-end px-4 pt-4 lg:flex lg:px-6">
-            <div className="pointer-events-auto">
-              <SheetBar
-                    view={view}
-                    primary={primary}
-                    onChange={onViewChange}
-                    action={
-                      view === "narrative" && onRewriteNarrative
-                        ? {
-                            onClick: onRewriteNarrative,
-                            label:
-                              drafting === "narrative"
-                                ? "Drafting…"
-                                : hasNarrative
-                                  ? "Rewrite"
-                                  : "Draft",
-                            disabled: isRunning || drafting !== null,
-                          }
-                        : view === "poem" && onRewritePoem
-                          ? {
-                              onClick: onRewritePoem,
-                              label:
-                                drafting === "poem"
-                                  ? "Drafting…"
-                                  : poem
-                                    ? "Rewrite"
-                                    : "Draft",
-                              disabled: isRunning || drafting !== null,
-                            }
-                          : null
-                    }
-                  />
-            </div>
-          </div>
-        )}
-        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-4 lg:pb-14">
+        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-14">
           {drafting === view && (
             <div
               role="status"
@@ -906,11 +869,27 @@ const SourceSheetPanel = ({
                 : view === "poem" && poem
                   ? poem.title
                   : sheet.title;
-            if (!currentTitle) return null;
+            if (!currentTitle && isEmpty) return null;
             return (
-              <h2 className="text-xl font-semibold text-stone-900 lg:text-2xl">
-                {currentTitle}
-              </h2>
+              <div className="flex items-start justify-between gap-6">
+                {currentTitle ? (
+                  <h2 className="min-w-0 text-xl font-semibold text-stone-900 lg:text-2xl">
+                    {currentTitle}
+                  </h2>
+                ) : (
+                  <span />
+                )}
+                {!isEmpty && (
+                  <div className="hidden shrink-0 lg:block">
+                    <SheetBar
+                      view={view}
+                      primary={primary}
+                      onChange={onViewChange}
+                      action={null}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })()}
           {view === "narrative" ? (
