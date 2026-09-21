@@ -87,6 +87,10 @@ anthropicProxy.post("/v1/messages", async (c) => {
     streaming = true;
     const body = teeUsage(upstream.body, (usage) => {
       endTurn(uid, turn);
+      // One line per turn so cache effectiveness is visible in Cloud Run logs.
+      console.log(
+        `[usage] uid=${uid.slice(0, 6)} in=${usage.inputTokens ?? 0} cache_read=${usage.cacheReadTokens ?? 0} cache_write=${usage.cacheWriteTokens ?? 0} out=${usage.outputTokens ?? 0}`,
+      );
       recordUsage(uid, usage).catch((e) =>
         console.warn("[usage] record failed", e),
       );
