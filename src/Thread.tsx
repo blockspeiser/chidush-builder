@@ -591,7 +591,7 @@ const SheetBar = ({
       {menuOpen && (
         <div
           role="menu"
-          className="absolute bottom-full left-1/2 z-20 mb-2 min-w-[9rem] -translate-x-1/2 overflow-hidden rounded-md border border-stone-200 bg-white text-base shadow-lg"
+          className="absolute top-full right-0 z-20 mt-2 min-w-[9rem] overflow-hidden rounded-md border border-stone-200 bg-white text-base shadow-lg"
         >
           <button
             type="button"
@@ -848,7 +848,43 @@ const SourceSheetPanel = ({
         ref={scrollContainerRef}
         className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
-        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-2">
+        {!isEmpty && (
+          <div className="pointer-events-none sticky top-0 z-10 hidden justify-end px-4 pt-4 lg:flex lg:px-6">
+            <div className="pointer-events-auto">
+              <SheetBar
+                    view={view}
+                    primary={primary}
+                    onChange={onViewChange}
+                    action={
+                      view === "narrative" && onRewriteNarrative
+                        ? {
+                            onClick: onRewriteNarrative,
+                            label:
+                              drafting === "narrative"
+                                ? "Drafting…"
+                                : hasNarrative
+                                  ? "Rewrite"
+                                  : "Draft",
+                            disabled: isRunning || drafting !== null,
+                          }
+                        : view === "poem" && onRewritePoem
+                          ? {
+                              onClick: onRewritePoem,
+                              label:
+                                drafting === "poem"
+                                  ? "Drafting…"
+                                  : poem
+                                    ? "Rewrite"
+                                    : "Draft",
+                              disabled: isRunning || drafting !== null,
+                            }
+                          : null
+                    }
+                  />
+            </div>
+          </div>
+        )}
+        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-4 lg:pb-14">
           {drafting === view && (
             <div
               role="status"
@@ -915,47 +951,6 @@ const SourceSheetPanel = ({
             </>
           )}
         </div>
-        {!isEmpty && (
-          <div className="sticky bottom-0 z-10 hidden flex-col lg:flex">
-            {/* Fade so text scrolling under the bar softens instead of clipping. */}
-            <div
-              className="h-6 bg-gradient-to-t from-white to-transparent"
-              aria-hidden="true"
-            />
-            <div className="flex justify-center bg-white px-4 pt-1 pb-4">
-            <SheetBar
-              view={view}
-              primary={primary}
-              onChange={onViewChange}
-              action={
-                view === "narrative" && onRewriteNarrative
-                  ? {
-                      onClick: onRewriteNarrative,
-                      label:
-                        drafting === "narrative"
-                          ? "Drafting…"
-                          : hasNarrative
-                            ? "Rewrite"
-                            : "Draft",
-                      disabled: isRunning || drafting !== null,
-                    }
-                  : view === "poem" && onRewritePoem
-                    ? {
-                        onClick: onRewritePoem,
-                        label:
-                          drafting === "poem"
-                            ? "Drafting…"
-                            : poem
-                              ? "Rewrite"
-                              : "Draft",
-                        disabled: isRunning || drafting !== null,
-                      }
-                    : null
-              }
-            />
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );
