@@ -96,9 +96,18 @@ Each phase is one commit and is testable locally before moving on.
   open `/api/health`, 401 on protected routes. `.dockerignore` excludes
   `.env`, `sessions/`, `node_modules`. Remaining: GCP steps 7 and 8, then
   a signed-in smoke test on the `run.app` URL.
-- [ ] **Phase 6 — Hardening.**
-  Budget alert, max instances, Anthropic spend limit, uptime check,
-  optional allowlist.
+- [~] **Phase 6 — Hardening.** *In progress.*
+  - [x] Max instances (3) and 10-min timeout set in `scripts/deploy.sh`.
+  - [x] Prompt caching maximized (2026-09-20): one 1-hour breakpoint on
+    the shared tools+system prefix, plus top-level automatic caching so the
+    conversation tail is re-read each turn. Verified directly against the
+    API: second identical request read 11,392 cached tokens, 2 uncached.
+    Per-turn usage is logged (`[usage] ...`) in Cloud Run logs.
+  - [ ] Anthropic console monthly spend limit (Brett).
+  - [ ] Confirm GCP billing budget exists (Brett).
+  - [ ] Optional: email allowlist for a soft launch.
+  - [ ] Optional: uptime check on `/api/health`.
+  - [ ] Optional: proxy Firebase `/__/auth/*` via custom domain once live.
 - [x] **Phase 7 — Migrate old sessions.** *Done 2026-09-20.* Imported the
   four real legacy sessions under Brett's account; skipped two Claude test
   sessions (`3rc75`, `zmo3d`). Script kept: `npm run migrate:sessions --
