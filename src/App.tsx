@@ -13,12 +13,6 @@ import { SignInScreen } from "./auth/SignInScreen";
 import { AccountMenu } from "./auth/AccountMenu";
 import type { User } from "firebase/auth";
 
-const REWRITE_POEM_PROMPT =
-  "Please draft (or rewrite) the poem sheet now based on our conversation and the narrative so far — call update_poem_sheet with whatever is reasonable given what we have. Don't ask for confirmation, just produce the poem.";
-
-const REWRITE_NARRATIVE_PROMPT =
-  "Please draft (or rewrite) the narrative sheet now based on our conversation so far — call update_narrative_sheet with whatever is reasonable given what we have. Don't ask for confirmation, just produce the draft.";
-
 export default function App() {
   const authState = useAuthUser();
   if (authState.status === "loading") {
@@ -47,15 +41,6 @@ function StudyApp({ user }: { user: User }) {
     onNew: conversation.onNew,
   });
 
-  function handleRewriteNarrative() {
-    if (conversation.isRunning) return;
-    void conversation.sendUserText(REWRITE_NARRATIVE_PROMPT);
-  }
-
-  function handleRewritePoem() {
-    if (conversation.isRunning) return;
-    void conversation.sendUserText(REWRITE_POEM_PROMPT);
-  }
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -65,8 +50,9 @@ function StudyApp({ user }: { user: User }) {
         poem={study.poemSheet}
         phase={study.currentPhase}
         isRunning={conversation.isRunning}
-        onRewriteNarrative={handleRewriteNarrative}
-        onRewritePoem={handleRewritePoem}
+        onRewriteNarrative={() => void conversation.draftSheet("narrative")}
+        onRewritePoem={() => void conversation.draftSheet("poem")}
+        drafting={conversation.drafting}
         loadEpoch={session.loadEpoch}
         error={conversation.error}
         onRetry={() => void conversation.retry()}

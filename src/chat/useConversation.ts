@@ -1,17 +1,27 @@
-// Owns the message list and the request -> tool -> request loop with Claude.
+// Owns the message list, the visible conversation loop, and background sheet
+// drafts (which reuse the conversation as context but never appear in it).
 
 import { useState } from "react";
 import type { AppendMessage } from "@assistant-ui/react";
-import { CLIENT_TOOL_NAMES } from "../../shared/tools";
-import { executeToolCall, type StudyEffects } from "../tools/executeToolCall";
-import { assistantPartsToApiMessages, buildApiMessages } from "./apiMessages";
+import type { StudyEffects } from "../tools/executeToolCall";
+import { buildApiMessages } from "./apiMessages";
 import { describeError } from "./errors";
-import { streamAssistantTurn } from "./streamTurn";
-import { textMessage, type Msg, type Part, type ToolCallPart } from "./types";
+import { runTurnLoop } from "./runTurnLoop";
+import { textMessage, type Msg, type Part } from "./types";
+
+export type DraftKind = "narrative" | "poem";
+
+const DRAFT_PROMPTS: Record<DraftKind, string> = {
+  narrative:
+    "Please draft (or rewrite) the narrative sheet now based on our conversation so far — call update_narrative_sheet with whatever is reasonable given what we have. Don't ask for confirmation and don't reply in prose; just call the tool.",
+  poem: "Please draft (or rewrite) the poem sheet now based on our conversation and the narrative so far — call update_poem_sheet with whatever is reasonable given what we have. Don't ask for confirmation and don't reply in prose; just call the tool.",
+};
 
 export function useConversation(effects: StudyEffects) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  // Which sheet a background draft is producing, if any.
+  const [drafting, setDrafting] = useState<DraftKind | null>(null);
   // Last failure, shown as a banner. The transcript is never altered by it.
   const [error, setError] = useState<string | null>(null);
   const [lastSent, setLastSent] = useState<Msg[] | null>(null);
@@ -31,9 +41,8 @@ export function useConversation(effects: StudyEffects) {
     setError(null);
     setLastSent(visibleMessages);
 
-    const apiMessages = buildApiMessages(visibleMessages);
     const assistantId = crypto.randomUUID();
-    const accumulated: Part[] = [];
+    let produced: Part[] = [];
 
     setMessages((prev) => [
       ...prev,
@@ -41,51 +50,46 @@ export function useConversation(effects: StudyEffects) {
     ]);
 
     try {
-      while (true) {
-        const { parts: turnParts, stopReason } = await streamAssistantTurn(
-          apiMessages,
-          (liveParts) =>
-            replaceAssistantContent(assistantId, [...accumulated, ...liveParts]),
-        );
-        accumulated.push(...turnParts);
-
-        const clientCalls = turnParts.filter(
-          (p): p is ToolCallPart =>
-            p.type === "tool-call" && CLIENT_TOOL_NAMES.has(p.toolName),
-        );
-
-        await Promise.all(
-          clientCalls.map(async (call) => {
-            const outcome = await executeToolCall(call, effects);
-            if (outcome.result !== undefined) call.result = outcome.result;
-            if (outcome.isError) call.isError = true;
-          }),
-        );
-
-        replaceAssistantContent(
-          assistantId,
-          accumulated.map((p) => ({ ...p })),
-        );
-
-        if (stopReason !== "tool_use" || clientCalls.length === 0) break;
-
-        apiMessages.push(...assistantPartsToApiMessages(turnParts));
-      }
+      await runTurnLoop(buildApiMessages(visibleMessages), effects, {
+        onProgress: (parts) => {
+          produced = parts;
+          replaceAssistantContent(assistantId, parts);
+        },
+        onTurnSettled: (parts) => {
+          produced = parts;
+          replaceAssistantContent(assistantId, parts);
+        },
+      });
     } catch (err) {
       console.error("[stream] error", err);
       setError(describeError(err));
       // Keep whatever the turn produced so far; drop the bubble only if empty.
-      if (accumulated.length === 0) {
+      if (produced.length === 0) {
         setMessages((prev) => prev.filter((m) => m.id !== assistantId));
-      } else {
-        replaceAssistantContent(
-          assistantId,
-          accumulated.map((p) => ({ ...p })),
-        );
       }
     } finally {
-      console.log("[stream] finally — setIsRunning(false)");
       setIsRunning(false);
+    }
+  }
+
+  /**
+   * Asks Claude to draft or rewrite a sheet using the conversation as
+   * context. Runs outside the transcript: the instruction and the model's
+   * reply are never shown; only the resulting sheet update lands.
+   */
+  async function draftSheet(kind: DraftKind) {
+    if (drafting) return;
+    setDrafting(kind);
+    setError(null);
+    try {
+      const apiMessages = buildApiMessages(messages);
+      apiMessages.push({ role: "user", content: DRAFT_PROMPTS[kind] });
+      await runTurnLoop(apiMessages, effects);
+    } catch (err) {
+      console.error("[draft] error", err);
+      setError(describeError(err));
+    } finally {
+      setDrafting(null);
     }
   }
 
@@ -126,6 +130,8 @@ export function useConversation(effects: StudyEffects) {
     messages,
     setMessages,
     isRunning,
+    drafting,
+    draftSheet,
     error,
     retry,
     dismissError,

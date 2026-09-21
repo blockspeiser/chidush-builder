@@ -618,6 +618,7 @@ const SourceSheetPanel = ({
   isRunning = false,
   onRewriteNarrative,
   onRewritePoem,
+  drafting = null,
   view,
   onViewChange,
 }: {
@@ -627,6 +628,7 @@ const SourceSheetPanel = ({
   isRunning?: boolean;
   onRewriteNarrative?: () => void;
   onRewritePoem?: () => void;
+  drafting?: "narrative" | "poem" | null;
   view: SheetView;
   onViewChange: (v: SheetView) => void;
 }) => {
@@ -821,10 +823,14 @@ const SourceSheetPanel = ({
                 <button
                   type="button"
                   onClick={rewrite.onClick}
-                  disabled={isRunning}
+                  disabled={isRunning || drafting !== null}
                   className="rounded-md border border-stone-200 bg-white px-2 py-0.5 text-xs tracking-wider text-stone-500 transition hover:bg-stone-200 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {rewrite.exists ? "Rewrite" : "Draft"}
+                  {drafting === view
+                    ? "Drafting…"
+                    : rewrite.exists
+                      ? "Rewrite"
+                      : "Draft"}
                 </button>
               )}
               {showToggle && (
@@ -838,6 +844,20 @@ const SourceSheetPanel = ({
           );
         })()}
         <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-14">
+          {drafting === view && (
+            <div
+              role="status"
+              aria-label="Drafting"
+              className="flex items-center gap-2 text-sm text-stone-500"
+            >
+              <span>Drafting</span>
+              <span className="flex h-5 items-center gap-1.5" aria-hidden="true">
+                <span className="thinking-dot" style={{ animationDelay: "0s" }} />
+                <span className="thinking-dot" style={{ animationDelay: "0.15s" }} />
+                <span className="thinking-dot" style={{ animationDelay: "0.3s" }} />
+              </span>
+            </div>
+          )}
           {(() => {
             const currentTitle =
               view === "narrative" && narrative
@@ -1150,6 +1170,7 @@ export function Thread({
   isRunning = false,
   onRewriteNarrative,
   onRewritePoem,
+  drafting = null,
   loadEpoch = 0,
   error = null,
   onRetry,
@@ -1163,6 +1184,8 @@ export function Thread({
   isRunning?: boolean;
   onRewriteNarrative?: () => void;
   onRewritePoem?: () => void;
+  /** Which sheet a background draft is producing, if any. */
+  drafting?: "narrative" | "poem" | null;
   loadEpoch?: number;
   error?: string | null;
   onRetry?: () => void;
@@ -1556,6 +1579,7 @@ export function Thread({
             isRunning={isRunning}
             onRewriteNarrative={onRewriteNarrative}
             onRewritePoem={onRewritePoem}
+            drafting={drafting}
             view={sheetView}
             onViewChange={handleSheetViewChange}
           />
