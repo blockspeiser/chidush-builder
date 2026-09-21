@@ -465,13 +465,24 @@ const SheetItem = ({ item }: { item: SourceSheetItem }) => {
 
 type SheetView = "narrative" | "notes" | "poem";
 
+type PrimaryView = "narrative" | "poem";
+
+/**
+ * Two-slot toggle: [Narrative|Poem] · Notes · caret. The first slot shows
+ * whichever creative view was chosen most recently; the caret menu offers
+ * the other one.
+ */
 const SheetToggle = ({
   view,
+  primary,
   onChange,
 }: {
   view: SheetView;
+  primary: PrimaryView;
   onChange: (v: SheetView) => void;
 }) => {
+  const alternate: PrimaryView = primary === "narrative" ? "poem" : "narrative";
+  const label = (v: PrimaryView) => (v === "narrative" ? "Narrative" : "Poem");
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -507,7 +518,7 @@ const SheetToggle = ({
   return (
     <div ref={wrapperRef} className="relative inline-flex">
       <div className="inline-flex items-center rounded-md border border-stone-200 bg-white p-0.5 text-xs">
-        {btn("narrative", "Narrative")}
+        {btn(primary, label(primary))}
         {btn("notes", "Notes")}
         <button
           type="button"
@@ -516,7 +527,7 @@ const SheetToggle = ({
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           className={`flex items-center rounded px-1.5 py-0.5 transition ${
-            menuOpen || view === "poem"
+            menuOpen
               ? "bg-stone-200 text-stone-900"
               : "text-stone-500 hover:text-stone-800"
           }`}
@@ -548,16 +559,12 @@ const SheetToggle = ({
             type="button"
             role="menuitem"
             onClick={() => {
-              onChange("poem");
+              onChange(alternate);
               setMenuOpen(false);
             }}
-            className={`block w-full px-3 py-1.5 text-left tracking-wider transition ${
-              view === "poem"
-                ? "bg-stone-100 text-stone-900"
-                : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
-            }`}
+            className="block w-full px-3 py-1.5 text-left tracking-wider text-stone-600 transition hover:bg-stone-50 hover:text-stone-900"
           >
-            Poem
+            {label(alternate)}
           </button>
         </div>
       )}
@@ -610,6 +617,7 @@ const SourceSheetPanel = ({
   poem,
   isRunning = false,
   onRewriteNarrative,
+  onRewritePoem,
   view,
   onViewChange,
 }: {
@@ -618,9 +626,16 @@ const SourceSheetPanel = ({
   poem: PoemSheet | null;
   isRunning?: boolean;
   onRewriteNarrative?: () => void;
+  onRewritePoem?: () => void;
   view: SheetView;
   onViewChange: (v: SheetView) => void;
 }) => {
+  // The creative view most recently chosen keeps the first toggle slot,
+  // even while Notes is selected.
+  const [primary, setPrimary] = useState<PrimaryView>("narrative");
+  useEffect(() => {
+    if (view === "narrative" || view === "poem") setPrimary(view);
+  }, [view]);
   const hasNarrative =
     narrative !== null &&
     (narrative.items.length > 0 || (narrative.title ?? "").length > 0);
@@ -793,23 +808,31 @@ const SourceSheetPanel = ({
         className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
         {(() => {
-          const showRewriteBtn =
-            view === "narrative" && onRewriteNarrative !== undefined;
-          if (!showRewriteBtn && !showToggle) return null;
+          const rewrite =
+            view === "narrative" && onRewriteNarrative
+              ? { onClick: onRewriteNarrative, exists: hasNarrative }
+              : view === "poem" && onRewritePoem
+                ? { onClick: onRewritePoem, exists: poem !== null }
+                : null;
+          if (!rewrite && !showToggle) return null;
           return (
             <div className="absolute top-6 right-6 z-10 hidden items-center gap-2 lg:flex">
-              {showRewriteBtn && (
+              {rewrite && (
                 <button
                   type="button"
-                  onClick={onRewriteNarrative}
+                  onClick={rewrite.onClick}
                   disabled={isRunning}
                   className="rounded-md border border-stone-200 bg-white px-2 py-0.5 text-xs tracking-wider text-stone-500 transition hover:bg-stone-200 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {hasNarrative ? "Rewrite" : "Draft"}
+                  {rewrite.exists ? "Rewrite" : "Draft"}
                 </button>
               )}
               {showToggle && (
-                <SheetToggle view={view} onChange={onViewChange} />
+                <SheetToggle
+                  view={view}
+                  primary={primary}
+                  onChange={onViewChange}
+                />
               )}
             </div>
           );
@@ -824,7 +847,8 @@ const SourceSheetPanel = ({
                   : sheet.title;
             if (!currentTitle) return null;
             const titleHasRewrite =
-              view === "narrative" && onRewriteNarrative !== undefined;
+              (view === "narrative" && onRewriteNarrative !== undefined) ||
+              (view === "poem" && onRewritePoem !== undefined);
             // Reserve right-padding on lg+ so the absolutely-positioned
             // toggle/rewrite cluster doesn't overlap the title — the title
             // wraps to a new line instead.
@@ -1125,6 +1149,7 @@ export function Thread({
   headerRight,
   isRunning = false,
   onRewriteNarrative,
+  onRewritePoem,
   loadEpoch = 0,
   error = null,
   onRetry,
@@ -1137,6 +1162,7 @@ export function Thread({
   headerRight?: ReactNode;
   isRunning?: boolean;
   onRewriteNarrative?: () => void;
+  onRewritePoem?: () => void;
   loadEpoch?: number;
   error?: string | null;
   onRetry?: () => void;
@@ -1529,6 +1555,7 @@ export function Thread({
             poem={poem}
             isRunning={isRunning}
             onRewriteNarrative={onRewriteNarrative}
+            onRewritePoem={onRewritePoem}
             view={sheetView}
             onViewChange={handleSheetViewChange}
           />
