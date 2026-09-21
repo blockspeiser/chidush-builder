@@ -626,17 +626,19 @@ const SheetBar = ({
 
 /** Empty state for the Narrative and Poem views, with a one-click draft. */
 const EmptyDraft = ({
+  kind,
   onDraft,
   drafting,
   disabled,
 }: {
+  kind: "narrative" | "poem";
   onDraft?: () => void;
   drafting: boolean;
   disabled: boolean;
 }) => (
   <div className="mt-6 flex flex-col items-center gap-4 text-center">
     <p className="text-lg leading-relaxed text-stone-400 italic">
-      Nothing drafted yet.
+      We haven't started drafting a {kind} yet.
     </p>
     {onDraft && (
       <button
@@ -935,6 +937,7 @@ const SourceSheetPanel = ({
               <NarrativeView narrative={narrative} />
             ) : (
               <EmptyDraft
+                kind="narrative"
                 onDraft={onRewriteNarrative}
                 drafting={drafting === "narrative"}
                 disabled={isRunning || drafting !== null}
@@ -945,6 +948,7 @@ const SourceSheetPanel = ({
               <PoemView poem={poem} />
             ) : (
               <EmptyDraft
+                kind="poem"
                 onDraft={onRewritePoem}
                 drafting={drafting === "poem"}
                 disabled={isRunning || drafting !== null}
