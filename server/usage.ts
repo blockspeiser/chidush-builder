@@ -25,7 +25,7 @@ export type TokenUsage = Partial<Omit<UsageCounters, "requests">>;
 
 /** Applied when config/limits is missing a field. Roughly $10/user/day. */
 export const DEFAULT_LIMITS: Limits = {
-  dailyRequests: 150,
+  dailyRequests: 300,
   dailyOutputTokens: 300_000,
 };
 

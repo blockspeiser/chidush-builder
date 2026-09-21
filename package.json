@@ -15,7 +15,8 @@
     "peek:users": "tsx server/scripts/peekUsers.ts",
     "check:usage": "tsx server/scripts/usageSmoke.ts",
     "deploy": "scripts/deploy.sh",
-    "migrate:sessions": "tsx server/scripts/migrateSessions.ts"
+    "migrate:sessions": "tsx server/scripts/migrateSessions.ts",
+    "set:limits": "tsx server/scripts/setLimits.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",

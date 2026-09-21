@@ -81,14 +81,14 @@ Each phase is one commit and is testable locally before moving on.
 - [x] **Phase 4 — Usage counters + limits.** *Done 2026-09-20.*
   `users/{uid}/usage/{YYYY-MM-DD}` counters (requests, input/output/cache
   tokens) updated from the SSE stream; `reserveRequest` transaction checks
-  `config/limits` (defaults 150 requests / 300k output tokens per UTC day,
+  `config/limits` (set 2026-09-20 to 300 requests / 300k output tokens per UTC day,
   cached 60s) before proxying. Limit errors return 403 in Anthropic error
   shape so the client SDK shows the message without retrying. Up to 3
   concurrent turns per user, oldest aborted beyond that. `GET /api/usage`
   returns today's counters. Verified with `npm run check:usage` and a
   live turn (76 in / 68 out / 11k cache-read tokens recorded).
-  To change limits without a redeploy: edit `config/limits` in the
-  Firestore console (`dailyRequests`, `dailyOutputTokens`).
+  To change limits without a redeploy: `npm run set:limits -- <requests>
+  <outputTokens>`, or edit `config/limits` in the Firestore console.
 - [x] **Phase 5 — Containerize + deploy.** *Done 2026-09-20.* Deployed via `npm run deploy`; prod smoke test passed.
   Multi-stage `Dockerfile` (build client + server, then a slim runtime
   image running `node dist-server/index.js`). Verified locally with
