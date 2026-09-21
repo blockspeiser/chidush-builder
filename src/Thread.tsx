@@ -521,26 +521,26 @@ const SheetBar = ({
     };
   }, [menuOpen]);
 
-  const segment = (active: boolean) =>
-    `inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-base leading-6 transition ${
+  const tab = (active: boolean) =>
+    `-mb-px inline-flex items-center gap-1 border-b-2 pb-2 text-base leading-6 transition ${
       active
-        ? "bg-[#f7f1de] font-medium text-stone-900"
-        : "text-stone-600 hover:text-stone-900"
+        ? "border-[#a3712a] font-semibold text-stone-900"
+        : "border-transparent text-stone-500 hover:text-stone-800"
     }`;
 
   return (
     <div
       ref={wrapperRef}
-      className="relative inline-flex items-center rounded-full border border-stone-200 bg-white p-1 shadow-[0_4px_14px_rgba(60,40,10,0.10)]"
+      className="relative inline-flex items-end gap-6 border-b border-stone-200 px-1"
     >
       <button
         type="button"
         onClick={() => onChange("notes")}
-        className={segment(view === "notes")}
+        className={tab(view === "notes")}
       >
         Notes
       </button>
-      <div className={segment(view === primary)}>
+      <div className={tab(view === primary)}>
         <button type="button" onClick={() => onChange(primary)}>
           {label(primary)}
         </button>
@@ -550,11 +550,7 @@ const SheetBar = ({
           aria-label="More views"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
-          className={`-mr-1 rounded-full p-0.5 transition ${
-            view === primary
-              ? "text-stone-500 hover:text-stone-900"
-              : "text-stone-400 hover:text-stone-800"
-          }`}
+          className="rounded p-0.5 text-stone-400 transition hover:text-stone-800"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -576,12 +572,11 @@ const SheetBar = ({
       </div>
       {action && (
         <>
-          <span className="mx-1 h-6 w-px bg-stone-200" aria-hidden="true" />
           <button
             type="button"
             onClick={action.onClick}
             disabled={action.disabled}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-base leading-6 text-[#8a6a2b] transition hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-40"
+            className="mb-2 inline-flex items-center gap-1.5 text-base leading-6 text-[#8a6a2b] transition hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <PencilIcon />
             {action.label}
@@ -848,7 +843,7 @@ const SourceSheetPanel = ({
         className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
         {!isEmpty && (
-          <div className="absolute top-3 right-3 z-10 hidden lg:block">
+          <div className="absolute top-5 right-6 z-10 hidden lg:block">
             <SheetBar
               view={view}
               primary={primary}
