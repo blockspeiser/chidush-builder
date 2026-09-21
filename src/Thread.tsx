@@ -526,8 +526,15 @@ const SheetTabs = ({
     }`;
 
   return (
-    <div ref={wrapperRef} className="relative flex items-end gap-6">
-      <div className={tabClass(view === primary)}>
+    <div ref={wrapperRef} className="flex items-end gap-6">
+      <button
+        type="button"
+        onClick={() => onChange("notes")}
+        className={tabClass(view === "notes")}
+      >
+        Notes
+      </button>
+      <div className={`relative ${tabClass(view === primary)}`}>
         <button type="button" onClick={() => onChange(primary)}>
           {label(primary)}
         </button>
@@ -556,32 +563,25 @@ const SheetTabs = ({
             />
           </svg>
         </button>
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange("notes")}
-        className={tabClass(view === "notes")}
-      >
-        Notes
-      </button>
-      {menuOpen && (
-        <div
-          role="menu"
-          className="absolute top-full left-0 z-20 mt-1 min-w-[9rem] overflow-hidden rounded-md border border-stone-200 bg-white text-base shadow-lg"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onChange(alternate);
-              setMenuOpen(false);
-            }}
-            className="block w-full px-3 py-2 text-left text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
+        {menuOpen && (
+          <div
+            role="menu"
+            className="absolute top-full left-0 z-20 mt-1 min-w-[9rem] overflow-hidden rounded-md border border-stone-200 bg-white text-base font-normal shadow-lg"
           >
-            {label(alternate)}
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onChange(alternate);
+                setMenuOpen(false);
+              }}
+              className="block w-full px-3 py-2 text-left text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
+            >
+              {label(alternate)}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
