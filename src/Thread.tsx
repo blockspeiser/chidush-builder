@@ -502,7 +502,6 @@ const SheetBar = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const alternate: PrimaryView = primary === "narrative" ? "poem" : "narrative";
   const label = (v: PrimaryView) => (v === "narrative" ? "Narrative" : "Poem");
 
   useEffect(() => {
@@ -586,19 +585,39 @@ const SheetBar = ({
       {menuOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-20 mt-2 min-w-[9rem] overflow-hidden rounded-md border border-stone-200 bg-white text-base shadow-lg"
+          className="absolute top-full right-0 z-20 mt-3 w-40 rounded-lg bg-[#f7f1de] py-1.5 text-base shadow-[0_6px_18px_rgba(60,40,10,0.12)] ring-1 ring-stone-300/60"
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onChange(alternate);
-              setMenuOpen(false);
-            }}
-            className="block w-full px-3 py-2 text-left text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
-          >
-            {label(alternate)}
-          </button>
+          {/* Tail pointing up at the caret */}
+          <span
+            aria-hidden="true"
+            className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 rounded-[2px] bg-[#f7f1de] ring-1 ring-stone-300/60 [clip-path:polygon(0_0,100%_0,0_100%)]"
+          />
+          {(["narrative", "poem"] as PrimaryView[]).map((v) => {
+            const active = v === primary;
+            return (
+              <button
+                key={v}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  onChange(v);
+                  setMenuOpen(false);
+                }}
+                className={`flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left transition hover:bg-white/60 ${
+                  active ? "font-semibold text-stone-900" : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    active ? "bg-[#a3712a]" : "bg-transparent"
+                  }`}
+                />
+                {label(v)}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
