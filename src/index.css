@@ -25,3 +25,17 @@ body {
   0%, 100% { transform: translateY(0.35rem); opacity: 0.55; }
   50% { transform: translateY(-0.35rem); opacity: 1; }
 }
+
+/* Tailwind v4's preflight no longer sets cursor: pointer on buttons. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="menuitem"],
+[role="tab"],
+a[href],
+summary,
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
