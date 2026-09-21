@@ -522,7 +522,7 @@ const SheetBar = ({
   }, [menuOpen]);
 
   const segment = (active: boolean) =>
-    `inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-lg transition ${
+    `inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-base leading-6 transition ${
       active
         ? "bg-stone-800 font-medium text-white"
         : "text-stone-600 hover:text-stone-900"
@@ -531,7 +531,7 @@ const SheetBar = ({
   return (
     <div
       ref={wrapperRef}
-      className="pointer-events-auto relative inline-flex items-center rounded-full border border-stone-200 bg-white p-1 shadow-[0_6px_20px_rgba(60,40,10,0.12)]"
+      className="relative inline-flex items-center rounded-full border border-stone-200 bg-white p-1 shadow-[0_4px_14px_rgba(60,40,10,0.10)]"
     >
       <button
         type="button"
@@ -576,12 +576,12 @@ const SheetBar = ({
       </div>
       {action && (
         <>
-          <span className="mx-1 h-7 w-px bg-stone-200" aria-hidden="true" />
+          <span className="mx-1 h-6 w-px bg-stone-200" aria-hidden="true" />
           <button
             type="button"
             onClick={action.onClick}
             disabled={action.disabled}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-lg text-[#8a6a2b] transition hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-base leading-6 text-[#8a6a2b] transition hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <PencilIcon />
             {action.label}
@@ -848,7 +848,7 @@ const SourceSheetPanel = ({
         ref={scrollContainerRef}
         className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
-        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-4">
+        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-2">
           {drafting === view && (
             <div
               role="status"
@@ -916,7 +916,13 @@ const SourceSheetPanel = ({
           )}
         </div>
         {!isEmpty && (
-          <div className="pointer-events-none sticky bottom-6 z-10 hidden justify-center px-4 lg:flex">
+          <div className="sticky bottom-0 z-10 hidden flex-col lg:flex">
+            {/* Fade so text scrolling under the bar softens instead of clipping. */}
+            <div
+              className="h-6 bg-gradient-to-t from-white to-transparent"
+              aria-hidden="true"
+            />
+            <div className="flex justify-center bg-white px-4 pt-1 pb-4">
             <SheetBar
               view={view}
               primary={primary}
@@ -947,6 +953,7 @@ const SourceSheetPanel = ({
                     : null
               }
             />
+            </div>
           </div>
         )}
       </div>
