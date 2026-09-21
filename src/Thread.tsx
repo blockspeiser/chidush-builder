@@ -569,19 +569,6 @@ const SheetBar = ({
           </svg>
         </button>
       </div>
-      {action && (
-        <>
-          <button
-            type="button"
-            onClick={action.onClick}
-            disabled={action.disabled}
-            className="mb-2 inline-flex items-center gap-1.5 text-base leading-6 text-[#8a6a2b] transition hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <PencilIcon />
-            {action.label}
-          </button>
-        </>
-      )}
       {menuOpen && (
         <div
           role="menu"
@@ -618,6 +605,24 @@ const SheetBar = ({
               </button>
             );
           })}
+          {action && (
+            <>
+              <div className="my-1.5 h-px bg-stone-300/60" aria-hidden="true" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  action.onClick();
+                }}
+                disabled={action.disabled}
+                className="flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left text-[#8a6a2b] transition hover:bg-white/60 hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <PencilIcon />
+                {action.label}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -898,7 +903,21 @@ const SourceSheetPanel = ({
               view={view}
               primary={primary}
               onChange={onViewChange}
-              action={null}
+              action={
+                view === "narrative" && hasNarrative && onRewriteNarrative
+                  ? {
+                      onClick: onRewriteNarrative,
+                      label: drafting === "narrative" ? "Drafting…" : "Rewrite",
+                      disabled: isRunning || drafting !== null,
+                    }
+                  : view === "poem" && poem && onRewritePoem
+                    ? {
+                        onClick: onRewritePoem,
+                        label: drafting === "poem" ? "Drafting…" : "Rewrite",
+                        disabled: isRunning || drafting !== null,
+                      }
+                    : null
+              }
             />
           </div>
         )}
