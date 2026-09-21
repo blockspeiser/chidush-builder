@@ -467,12 +467,28 @@ type SheetView = "narrative" | "notes" | "poem";
 
 type PrimaryView = "narrative" | "poem";
 
+const PencilIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="h-5 w-5"
+    aria-hidden="true"
+  >
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
+
 /**
- * Two-slot toggle: [Narrative|Poem] · Notes · caret. The first slot shows
- * whichever creative view was chosen most recently; the caret menu offers
- * the other one.
+ * Underline tabs: [Narrative|Poem ▾] · Notes. The first tab shows whichever
+ * creative view was chosen most recently; its caret offers the other one.
  */
-const SheetToggle = ({
+const SheetTabs = ({
   view,
   primary,
   onChange,
@@ -481,10 +497,10 @@ const SheetToggle = ({
   primary: PrimaryView;
   onChange: (v: SheetView) => void;
 }) => {
-  const alternate: PrimaryView = primary === "narrative" ? "poem" : "narrative";
-  const label = (v: PrimaryView) => (v === "narrative" ? "Narrative" : "Poem");
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const alternate: PrimaryView = primary === "narrative" ? "poem" : "narrative";
+  const label = (v: PrimaryView) => (v === "narrative" ? "Narrative" : "Poem");
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -502,41 +518,32 @@ const SheetToggle = ({
     };
   }, [menuOpen]);
 
-  const btn = (target: SheetView, label: string) => (
-    <button
-      type="button"
-      onClick={() => onChange(target)}
-      className={`rounded px-2 py-0.5 tracking-wider transition ${
-        view === target
-          ? "bg-stone-200 text-stone-900"
-          : "text-stone-500 hover:text-stone-800"
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const tabClass = (active: boolean) =>
+    `-mb-px inline-flex items-center gap-1.5 border-b-2 px-0 pb-3 text-xl transition ${
+      active
+        ? "border-[#a3712a] font-semibold text-stone-900"
+        : "border-transparent text-stone-500 hover:text-stone-800"
+    }`;
+
   return (
-    <div ref={wrapperRef} className="relative inline-flex">
-      <div className="inline-flex items-center rounded-md border border-stone-200 bg-white p-0.5 text-xs">
-        {btn(primary, label(primary))}
-        {btn("notes", "Notes")}
+    <div ref={wrapperRef} className="relative flex items-end gap-8">
+      <div className={tabClass(view === primary)}>
+        <button type="button" onClick={() => onChange(primary)}>
+          {label(primary)}
+        </button>
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
           aria-label="More views"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
-          className={`flex items-center rounded px-1.5 py-0.5 transition ${
-            menuOpen
-              ? "bg-stone-200 text-stone-900"
-              : "text-stone-500 hover:text-stone-800"
-          }`}
+          className="rounded p-0.5 text-stone-400 transition hover:text-stone-800"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 12 12"
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             aria-hidden="true"
           >
             <path
@@ -550,10 +557,17 @@ const SheetToggle = ({
           </svg>
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => onChange("notes")}
+        className={tabClass(view === "notes")}
+      >
+        Notes
+      </button>
       {menuOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-20 mt-1 min-w-[8rem] overflow-hidden rounded-md border border-stone-200 bg-white text-sm shadow-lg"
+          className="absolute top-full left-0 z-20 mt-1 min-w-[9rem] overflow-hidden rounded-md border border-stone-200 bg-white text-base shadow-lg"
         >
           <button
             type="button"
@@ -562,7 +576,7 @@ const SheetToggle = ({
               onChange(alternate);
               setMenuOpen(false);
             }}
-            className="block w-full px-3 py-1.5 text-left tracking-wider text-stone-600 transition hover:bg-stone-50 hover:text-stone-900"
+            className="block w-full px-3 py-2 text-left text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
           >
             {label(alternate)}
           </button>
@@ -818,27 +832,30 @@ const SourceSheetPanel = ({
                 : null;
           if (!rewrite && !showToggle) return null;
           return (
-            <div className="absolute top-6 right-6 z-10 hidden items-center gap-2 lg:flex">
+            <div className="hidden items-end justify-between border-b border-stone-200 px-8 pt-6 lg:flex lg:px-12">
+              {showToggle ? (
+                <SheetTabs
+                  view={view}
+                  primary={primary}
+                  onChange={onViewChange}
+                />
+              ) : (
+                <span />
+              )}
               {rewrite && (
                 <button
                   type="button"
                   onClick={rewrite.onClick}
                   disabled={isRunning || drafting !== null}
-                  className="rounded-md border border-stone-200 bg-white px-2 py-0.5 text-xs tracking-wider text-stone-500 transition hover:bg-stone-200 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mb-3 inline-flex items-center gap-2 text-xl text-[#a3712a] transition hover:text-[#7c5518] disabled:cursor-not-allowed disabled:opacity-40"
                 >
+                  <PencilIcon />
                   {drafting === view
                     ? "Drafting…"
                     : rewrite.exists
                       ? "Rewrite"
                       : "Draft"}
                 </button>
-              )}
-              {showToggle && (
-                <SheetToggle
-                  view={view}
-                  primary={primary}
-                  onChange={onViewChange}
-                />
               )}
             </div>
           );
@@ -866,17 +883,8 @@ const SourceSheetPanel = ({
                   ? poem.title
                   : sheet.title;
             if (!currentTitle) return null;
-            const titleHasRewrite =
-              (view === "narrative" && onRewriteNarrative !== undefined) ||
-              (view === "poem" && onRewritePoem !== undefined);
-            // Reserve right-padding on lg+ so the absolutely-positioned
-            // toggle/rewrite cluster doesn't overlap the title — the title
-            // wraps to a new line instead.
-            const titleRightPad = titleHasRewrite ? "lg:pr-[22rem]" : "lg:pr-72";
             return (
-              <h2
-                className={`text-xl font-semibold text-stone-900 lg:text-2xl ${titleRightPad}`}
-              >
+              <h2 className="text-xl font-semibold text-stone-900 lg:text-2xl">
                 {currentTitle}
               </h2>
             );
@@ -901,7 +909,7 @@ const SourceSheetPanel = ({
             <>
               {sheet.items.length === 0 ? (
                 <div className="mt-3 text-center text-lg leading-relaxed text-stone-400 italic">
-                  Your source sheet will take shape here as you learn.
+                  Your notes will take shape here as you learn.
                 </div>
               ) : (
                 sheet.items.map((item, i) => (
