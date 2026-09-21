@@ -476,7 +476,7 @@ const PencilIcon = () => (
     strokeWidth={1.6}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="h-5 w-5"
+    className="h-4 w-4"
     aria-hidden="true"
   >
     <path d="M12 20h9" />
@@ -519,14 +519,14 @@ const SheetTabs = ({
   }, [menuOpen]);
 
   const tabClass = (active: boolean) =>
-    `-mb-px inline-flex items-center gap-1.5 border-b-2 px-0 pb-3 text-xl transition ${
+    `-mb-px inline-flex items-center gap-1 border-b-2 px-0 pb-2.5 text-base transition ${
       active
         ? "border-[#a3712a] font-semibold text-stone-900"
         : "border-transparent text-stone-500 hover:text-stone-800"
     }`;
 
   return (
-    <div ref={wrapperRef} className="relative flex items-end gap-8">
+    <div ref={wrapperRef} className="relative flex items-end gap-6">
       <div className={tabClass(view === primary)}>
         <button type="button" onClick={() => onChange(primary)}>
           {label(primary)}
@@ -542,8 +542,8 @@ const SheetTabs = ({
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 12 12"
-            width="14"
-            height="14"
+            width="12"
+            height="12"
             aria-hidden="true"
           >
             <path
@@ -832,7 +832,8 @@ const SourceSheetPanel = ({
                 : null;
           if (!rewrite && !showToggle) return null;
           return (
-            <div className="hidden items-end justify-between border-b border-stone-200 px-8 pt-6 lg:flex lg:px-12">
+            <div className="hidden px-4 pt-6 lg:block lg:px-12">
+            <div className="flex items-end justify-between border-b border-stone-200">
               {showToggle ? (
                 <SheetTabs
                   view={view}
@@ -847,7 +848,7 @@ const SourceSheetPanel = ({
                   type="button"
                   onClick={rewrite.onClick}
                   disabled={isRunning || drafting !== null}
-                  className="mb-3 inline-flex items-center gap-2 text-xl text-[#a3712a] transition hover:text-[#7c5518] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mb-2.5 inline-flex items-center gap-1.5 text-base text-[#a3712a] transition hover:text-[#7c5518] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <PencilIcon />
                   {drafting === view
@@ -857,6 +858,7 @@ const SourceSheetPanel = ({
                       : "Draft"}
                 </button>
               )}
+            </div>
             </div>
           );
         })()}
