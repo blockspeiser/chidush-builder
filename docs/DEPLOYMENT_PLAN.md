@@ -5,18 +5,20 @@ says what, if anything, Brett needs to do in GCP right now.
 
 ## Your next GCP action
 
-**Status: READY FOR YOU — step 7, the first deploy.**
+**Status: READY FOR YOU — step 8 (authorized domains), then a prod smoke test.**
 
-Phases 1–4 are done and phase 5's Dockerfile is committed and verified
-locally in production mode. Run `npm run deploy` from the repo root (Cloud Build
-builds the image; no local Docker needed; takes a few minutes the first
-time), then step 8. Or tell Claude to run step 7 for you — `gcloud` on this
-machine is already signed in and pointed at `chidush-builder`.
+Deployed 2026-09-20 (revision `chidush-00002-m6k`). The sign-in screen
+renders at https://chidush-1085338993481.us-central1.run.app (Cloud Run
+also answers at https://chidush-42h4ud53ca-uc.a.run.app; same service).
+Custom domain `chidush.torahlabs.org` is mapped and waiting on DNS +
+certificate.
 
-Known quirk seen 2026-09-20: the very first Google sign-in on a fresh
-browser landed back on the sign-in screen; the second attempt worked.
-Watch for it in prod; if it recurs, the fix is to proxy Firebase's
-`/__/auth/*` handler through our own domain.
+To do now:
+1. Firebase Auth → Authorized domains → add both
+   `chidush-1085338993481.us-central1.run.app` and `chidush.torahlabs.org`.
+2. Sign in on the run.app URL, send one multi-tool message, reload the
+   `/s/...` URL. Tell Claude how it went.
+3. Anthropic console → set a monthly spend limit.
 
 ## Target shape
 
@@ -177,7 +179,7 @@ phase 5.
   gcloud secrets add-iam-policy-binding anthropic-api-key --member serviceAccount:chidush-run@chidush-builder.iam.gserviceaccount.com --role roles/secretmanager.secretAccessor --project chidush-builder
   ```
   `GOOGLE_CLOUD_PROJECT=chidush-builder` is already in `.env`.
-- [ ] **7. Deploy (CLI, during phase 5).** All flags live in
+- [x] **7. Deploy (CLI, during phase 5).** *Done 2026-09-20 — revision 2, after fixing the Firebase config build issue.* All flags live in
   `scripts/deploy.sh`; edit that file to change region, instance caps, etc.
   ```bash
   npm run deploy
@@ -187,10 +189,17 @@ phase 5.
   1. Copy the `https://chidush-....run.app` URL the deploy prints.
   2. https://console.firebase.google.com/project/chidush-builder/authentication/settings
      → Authorized domains → Add domain → paste the hostname (no
-     `https://`). Without this, Google sign-in fails in prod.
+     `https://`). Add every hostname the app is served from:
+     `chidush-1085338993481.us-central1.run.app` and
+     `chidush.torahlabs.org`. Without this, Google sign-in fails in prod.
   3. https://console.anthropic.com/settings/limits → set a monthly spend
      limit.
-  Custom domain later via Cloud Run domain mapping if wanted.
+  4. Custom domain: Cloud Run domain mapping for `chidush.torahlabs.org`
+     is created; it goes live once the DNS records are in place and the
+     certificate is issued (Cloud Run console → Domain mappings shows
+     status). Once live, consider proxying Firebase's `/__/auth/*` through
+     our server and setting `authDomain` to the custom domain to remove
+     the cross-site sign-in hop (phase 6).
 
 ## Local development
 
