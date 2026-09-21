@@ -880,7 +880,9 @@ const SourceSheetPanel = ({
                   <span />
                 )}
                 {!isEmpty && (
-                  <div className="hidden shrink-0 lg:block">
+                  // Pill is 44px tall, the title's first line is 32px: offset
+                  // by half the difference so their centers line up.
+                  <div className="hidden shrink-0 lg:-mt-1.5 lg:block">
                     <SheetBar
                       view={view}
                       primary={primary}
