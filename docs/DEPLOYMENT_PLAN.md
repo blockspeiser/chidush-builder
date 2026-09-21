@@ -5,20 +5,16 @@ says what, if anything, Brett needs to do in GCP right now.
 
 ## Your next GCP action
 
-**Status: READY FOR YOU — step 8 (authorized domains), then a prod smoke test.**
+**Status: deployed and verified. Two small Console items remain.**
 
-Deployed 2026-09-20 (revision `chidush-00002-m6k`). The sign-in screen
-renders at https://chidush-1085338993481.us-central1.run.app (Cloud Run
-also answers at https://chidush-42h4ud53ca-uc.a.run.app; same service).
-Custom domain `chidush.torahlabs.org` is mapped and waiting on DNS +
-certificate.
+Production smoke test passed 2026-09-20: sign-in, a multi-tool turn, and a
+direct `/s/:id` reload on the run.app URL; session and usage counters
+confirmed in Firestore; 111/111 API requests 200 in Cloud Run logs.
 
-To do now:
-1. Firebase Auth → Authorized domains → add both
-   `chidush-1085338993481.us-central1.run.app` and `chidush.torahlabs.org`.
-2. Sign in on the run.app URL, send one multi-tool message, reload the
-   `/s/...` URL. Tell Claude how it went.
-3. Anthropic console → set a monthly spend limit.
+Still yours:
+1. Anthropic console → set a monthly spend limit (https://console.anthropic.com/settings/limits).
+2. Confirm a billing budget exists for `chidush-builder` (CLI cannot see budgets).
+3. `chidush.torahlabs.org` goes live when DNS + certificate finish.
 
 ## Target shape
 
@@ -93,7 +89,7 @@ Each phase is one commit and is testable locally before moving on.
   live turn (76 in / 68 out / 11k cache-read tokens recorded).
   To change limits without a redeploy: edit `config/limits` in the
   Firestore console (`dailyRequests`, `dailyOutputTokens`).
-- [~] **Phase 5 — Containerize + deploy.** *Dockerfile done 2026-09-20; deploy pending.*
+- [x] **Phase 5 — Containerize + deploy.** *Done 2026-09-20.* Deployed via `npm run deploy`; prod smoke test passed.
   Multi-stage `Dockerfile` (build client + server, then a slim runtime
   image running `node dist-server/index.js`). Verified locally with
   `NODE_ENV=production`: static bundle, SPA fallback for `/s/:id`, assets,
@@ -103,8 +99,11 @@ Each phase is one commit and is testable locally before moving on.
 - [ ] **Phase 6 — Hardening.**
   Budget alert, max instances, Anthropic spend limit, uptime check,
   optional allowlist.
-- [ ] **Phase 7 — Migrate old sessions.**
-  One-off script: `sessions/*.json` → Firestore under Brett's uid. Last.
+- [x] **Phase 7 — Migrate old sessions.** *Done 2026-09-20.* Imported the
+  four real legacy sessions under Brett's account; skipped two Claude test
+  sessions (`3rc75`, `zmo3d`). Script kept: `npm run migrate:sessions --
+  <uid> [--apply] [--skip=id,id]`. The `sessions/` folder is now only an
+  archive and can be deleted.
 
 ## GCP configuration steps (in order)
 
@@ -185,7 +184,7 @@ phase 5.
   npm run deploy
   ```
   Prints the service URL when done.
-- [ ] **8. Post-deploy (Console).**
+- [~] **8. Post-deploy (Console).** *Authorized domains done (both run.app hostnames + custom domain). Spend limit pending.*
   1. Copy the `https://chidush-....run.app` URL the deploy prints.
   2. https://console.firebase.google.com/project/chidush-builder/authentication/settings
      → Authorized domains → Add domain → paste the hostname (no
