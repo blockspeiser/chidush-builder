@@ -655,9 +655,6 @@ const SourceSheetPanel = ({
   const hasNarrative =
     narrative !== null &&
     (narrative.items.length > 0 || (narrative.title ?? "").length > 0);
-  const hasNotesContent =
-    sheet.items.length > 0 || (sheet.title ?? "").length > 0;
-  const showToggle = hasNotesContent || hasNarrative;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -830,19 +827,14 @@ const SourceSheetPanel = ({
               : view === "poem" && onRewritePoem
                 ? { onClick: onRewritePoem, exists: poem !== null }
                 : null;
-          if (!rewrite && !showToggle) return null;
           return (
             <div className="sticky top-0 z-10 hidden bg-white px-4 pt-6 lg:block lg:px-12">
             <div className="flex items-end justify-between border-b border-stone-200">
-              {showToggle ? (
-                <SheetTabs
-                  view={view}
-                  primary={primary}
-                  onChange={onViewChange}
-                />
-              ) : (
-                <span />
-              )}
+              <SheetTabs
+                view={view}
+                primary={primary}
+                onChange={onViewChange}
+              />
               {rewrite && (
                 <button
                   type="button"
