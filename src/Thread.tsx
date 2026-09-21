@@ -921,7 +921,7 @@ const SourceSheetPanel = ({
                   : sheet.title;
             if (!currentTitle && isEmpty) return null;
             return (
-              <div className="flex items-start justify-between gap-6">
+              <div className="flex items-baseline justify-between gap-6">
                 {currentTitle ? (
                   <h2 className="min-w-0 text-xl font-semibold text-stone-900 lg:text-2xl">
                     {currentTitle}
@@ -930,9 +930,10 @@ const SourceSheetPanel = ({
                   <span />
                 )}
                 {!isEmpty && (
-                  // Tab text is a 24px line; the title's first line is 32px.
-                  // Nudge down so the two text centers align.
-                  <div className="hidden shrink-0 lg:mt-1 lg:block">
+                  // Baseline-aligned, then lifted by the tab's descender +
+                  // bottom padding so the rule under the tabs sits on the
+                  // title's first-line baseline.
+                  <div className="hidden shrink-0 lg:block lg:-translate-y-4">
                     <SheetBar
                       view={view}
                       primary={primary}
