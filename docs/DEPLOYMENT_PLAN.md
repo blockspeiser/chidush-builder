@@ -137,14 +137,9 @@ phase 5.
   2. https://console.firebase.google.com/project/chidush-builder/settings/general
      → under "Your apps" click the web icon `</>` → nickname
      `chidush-web`, leave Hosting unchecked → Register app.
-  3. It shows a `firebaseConfig` object. Copy these four values into
-     `.env` (they are public identifiers, safe in the client bundle):
-     ```
-     VITE_FIREBASE_API_KEY=<apiKey>
-     VITE_FIREBASE_AUTH_DOMAIN=chidush-builder.firebaseapp.com
-     VITE_FIREBASE_PROJECT_ID=chidush-builder
-     VITE_FIREBASE_APP_ID=<appId>
-     ```
+  3. It shows a `firebaseConfig` object. apiKey, authDomain, projectId
+     and appId go in `src/auth/firebaseConfig.ts` (public identifiers,
+     safe to commit).
   `localhost` is already an authorized domain, so local sign-in works.
 - [x] **4. Firestore (Console).** *Done — database ID is `chidush-builder-db` (not `(default)`), so the server reads `FIRESTORE_DATABASE_ID` from `.env` and the deploy command sets it.*
   1. https://console.firebase.google.com/project/chidush-builder/firestore
@@ -205,11 +200,12 @@ phase 5.
 ANTHROPIC_API_KEY=...            # server only
 GOOGLE_CLOUD_PROJECT=chidush-builder  # server only, from GCP step 6
 FIRESTORE_DATABASE_ID=chidush-builder-db
-VITE_FIREBASE_API_KEY=...        # client, from GCP step 3
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_APP_ID=...
 ```
+
+The public Firebase web config is committed in `src/auth/firebaseConfig.ts`
+(it must be in source: `.env` is excluded from the container build, and
+Vite bakes these values in at build time). `VITE_FIREBASE_*` env vars
+override it only if you want local dev on a different Firebase project.
 
 Two processes, one command (`npm run dev`): Vite on 5173 proxying `/api` to
 the server on 8787. The server reads `.env` for `ANTHROPIC_API_KEY` and
