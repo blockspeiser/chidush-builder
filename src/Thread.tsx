@@ -847,6 +847,16 @@ const SourceSheetPanel = ({
         ref={scrollContainerRef}
         className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
+        {!isEmpty && (
+          <div className="absolute top-3 right-3 z-10 hidden lg:block">
+            <SheetBar
+              view={view}
+              primary={primary}
+              onChange={onViewChange}
+              action={null}
+            />
+          </div>
+        )}
         <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-14">
           {drafting === view && (
             <div
@@ -869,29 +879,12 @@ const SourceSheetPanel = ({
                 : view === "poem" && poem
                   ? poem.title
                   : sheet.title;
-            if (!currentTitle && isEmpty) return null;
+            if (!currentTitle) return null;
             return (
-              <div className="flex items-start justify-between gap-6">
-                {currentTitle ? (
-                  <h2 className="min-w-0 text-xl font-semibold text-stone-900 lg:text-2xl">
-                    {currentTitle}
-                  </h2>
-                ) : (
-                  <span />
-                )}
-                {!isEmpty && (
-                  // Pill is 44px tall, the title's first line is 32px: offset
-                  // by half the difference so their centers line up.
-                  <div className="hidden shrink-0 lg:-mt-1.5 lg:block">
-                    <SheetBar
-                      view={view}
-                      primary={primary}
-                      onChange={onViewChange}
-                      action={null}
-                    />
-                  </div>
-                )}
-              </div>
+              // Right padding keeps a long title clear of the corner pill.
+              <h2 className="text-xl font-semibold text-stone-900 lg:pr-56 lg:text-2xl">
+                {currentTitle}
+              </h2>
             );
           })()}
           {view === "narrative" ? (
