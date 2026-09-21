@@ -524,7 +524,7 @@ const SheetBar = ({
   const segment = (active: boolean) =>
     `inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-base leading-6 transition ${
       active
-        ? "bg-stone-800 font-medium text-white"
+        ? "bg-[#f7f1de] font-medium text-stone-900"
         : "text-stone-600 hover:text-stone-900"
     }`;
 
@@ -552,7 +552,7 @@ const SheetBar = ({
           aria-haspopup="menu"
           className={`-mr-1 rounded-full p-0.5 transition ${
             view === primary
-              ? "text-stone-300 hover:text-white"
+              ? "text-stone-500 hover:text-stone-900"
               : "text-stone-400 hover:text-stone-800"
           }`}
         >
