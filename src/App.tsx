@@ -10,7 +10,7 @@ import { useSessionPersistence } from "./session/useSessionPersistence";
 import { NewSessionButton, SessionsButton } from "./session/SessionButtons";
 import { useAuthUser } from "./auth/useAuthUser";
 import { SignInScreen } from "./auth/SignInScreen";
-import { SignOutButton } from "./auth/SignOutButton";
+import { AccountMenu } from "./auth/AccountMenu";
 import type { User } from "firebase/auth";
 
 const REWRITE_NARRATIVE_PROMPT =
@@ -72,7 +72,7 @@ function StudyApp({ user }: { user: User }) {
               currentId={session.sessionIdRef.current}
               onLoad={session.loadSession}
             />
-            <SignOutButton user={user} />
+            <AccountMenu user={user} />
           </div>
         }
       />
