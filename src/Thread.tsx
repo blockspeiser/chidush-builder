@@ -485,17 +485,20 @@ const PencilIcon = () => (
 );
 
 /**
- * Underline tabs: [Narrative|Poem ▾] · Notes. The first tab shows whichever
- * creative view was chosen most recently; its caret offers the other one.
+ * Floating pill at the bottom of the sheet: [Notes] [Narrative|Poem ▾] │ ✎ Draft.
+ * The creative segment shows whichever view was chosen most recently; its
+ * caret offers the other one. The action is omitted on Notes.
  */
-const SheetTabs = ({
+const SheetBar = ({
   view,
   primary,
   onChange,
+  action,
 }: {
   view: SheetView;
   primary: PrimaryView;
   onChange: (v: SheetView) => void;
+  action: { onClick: () => void; label: string; disabled: boolean } | null;
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -518,23 +521,26 @@ const SheetTabs = ({
     };
   }, [menuOpen]);
 
-  const tabClass = (active: boolean) =>
-    `-mb-px inline-flex items-center gap-1 border-b-2 px-0 pb-2.5 text-base transition ${
+  const segment = (active: boolean) =>
+    `inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-lg transition ${
       active
-        ? "border-[#a3712a] font-semibold text-stone-900"
-        : "border-transparent text-stone-500 hover:text-stone-800"
+        ? "bg-stone-800 font-medium text-white"
+        : "text-stone-600 hover:text-stone-900"
     }`;
 
   return (
-    <div ref={wrapperRef} className="flex items-end gap-6">
+    <div
+      ref={wrapperRef}
+      className="pointer-events-auto relative inline-flex items-center rounded-full border border-stone-200 bg-white p-1 shadow-[0_6px_20px_rgba(60,40,10,0.12)]"
+    >
       <button
         type="button"
         onClick={() => onChange("notes")}
-        className={tabClass(view === "notes")}
+        className={segment(view === "notes")}
       >
         Notes
       </button>
-      <div className={`relative ${tabClass(view === primary)}`}>
+      <div className={segment(view === primary)}>
         <button type="button" onClick={() => onChange(primary)}>
           {label(primary)}
         </button>
@@ -544,7 +550,11 @@ const SheetTabs = ({
           aria-label="More views"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
-          className="rounded p-0.5 text-stone-400 transition hover:text-stone-800"
+          className={`-mr-1 rounded-full p-0.5 transition ${
+            view === primary
+              ? "text-stone-300 hover:text-white"
+              : "text-stone-400 hover:text-stone-800"
+          }`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -563,25 +573,39 @@ const SheetTabs = ({
             />
           </svg>
         </button>
-        {menuOpen && (
-          <div
-            role="menu"
-            className="absolute top-full left-0 z-20 mt-1 min-w-[9rem] overflow-hidden rounded-md border border-stone-200 bg-white text-base font-normal shadow-lg"
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onChange(alternate);
-                setMenuOpen(false);
-              }}
-              className="block w-full px-3 py-2 text-left text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
-            >
-              {label(alternate)}
-            </button>
-          </div>
-        )}
       </div>
+      {action && (
+        <>
+          <span className="mx-1 h-7 w-px bg-stone-200" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={action.onClick}
+            disabled={action.disabled}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-lg text-[#8a6a2b] transition hover:text-[#6b5120] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <PencilIcon />
+            {action.label}
+          </button>
+        </>
+      )}
+      {menuOpen && (
+        <div
+          role="menu"
+          className="absolute bottom-full left-1/2 z-20 mb-2 min-w-[9rem] -translate-x-1/2 overflow-hidden rounded-md border border-stone-200 bg-white text-base shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onChange(alternate);
+              setMenuOpen(false);
+            }}
+            className="block w-full px-3 py-2 text-left text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
+          >
+            {label(alternate)}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -822,44 +846,9 @@ const SourceSheetPanel = ({
     <aside className="flex min-h-0 flex-1 flex-col lg:pt-3 lg:pr-16 lg:pb-8 lg:pl-8">
       <div
         ref={scrollContainerRef}
-        className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 lg:scroll-pt-20 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
+        className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
-        {(() => {
-          const rewrite =
-            view === "narrative" && onRewriteNarrative
-              ? { onClick: onRewriteNarrative, exists: hasNarrative }
-              : view === "poem" && onRewritePoem
-                ? { onClick: onRewritePoem, exists: poem !== null }
-                : null;
-          if (isEmpty) return null;
-          return (
-            <div className="sticky top-0 z-10 hidden bg-white px-4 pt-6 lg:block lg:px-12">
-            <div className="flex items-end justify-between border-b border-stone-200">
-              <SheetTabs
-                view={view}
-                primary={primary}
-                onChange={onViewChange}
-              />
-              {rewrite && (
-                <button
-                  type="button"
-                  onClick={rewrite.onClick}
-                  disabled={isRunning || drafting !== null}
-                  className="mb-2.5 inline-flex items-center gap-1.5 text-base text-[#a3712a] transition hover:text-[#7c5518] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <PencilIcon />
-                  {drafting === view
-                    ? "Drafting…"
-                    : rewrite.exists
-                      ? "Rewrite"
-                      : "Draft"}
-                </button>
-              )}
-            </div>
-            </div>
-          );
-        })()}
-        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-14">
+        <div className="space-y-6 px-4 pt-4 pb-10 lg:space-y-8 lg:px-12 lg:pt-12 lg:pb-4">
           {drafting === view && (
             <div
               role="status"
@@ -926,6 +915,40 @@ const SourceSheetPanel = ({
             </>
           )}
         </div>
+        {!isEmpty && (
+          <div className="pointer-events-none sticky bottom-6 z-10 hidden justify-center px-4 lg:flex">
+            <SheetBar
+              view={view}
+              primary={primary}
+              onChange={onViewChange}
+              action={
+                view === "narrative" && onRewriteNarrative
+                  ? {
+                      onClick: onRewriteNarrative,
+                      label:
+                        drafting === "narrative"
+                          ? "Drafting…"
+                          : hasNarrative
+                            ? "Rewrite"
+                            : "Draft",
+                      disabled: isRunning || drafting !== null,
+                    }
+                  : view === "poem" && onRewritePoem
+                    ? {
+                        onClick: onRewritePoem,
+                        label:
+                          drafting === "poem"
+                            ? "Drafting…"
+                            : poem
+                              ? "Rewrite"
+                              : "Draft",
+                        disabled: isRunning || drafting !== null,
+                      }
+                    : null
+              }
+            />
+          </div>
+        )}
       </div>
     </aside>
   );
