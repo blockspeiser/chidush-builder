@@ -821,7 +821,7 @@ const SourceSheetPanel = ({
     <aside className="flex min-h-0 flex-1 flex-col lg:pt-3 lg:pr-16 lg:pb-8 lg:pl-8">
       <div
         ref={scrollContainerRef}
-        className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
+        className="relative mx-auto flex min-h-0 w-full max-w-3xl flex-1 lg:scroll-pt-20 scroll-pt-8 flex-col overflow-y-auto bg-white lg:rounded-sm lg:shadow-[0_2px_12px_rgba(60,40,10,0.06)] lg:ring-1 lg:ring-black/5"
       >
         {(() => {
           const rewrite =
