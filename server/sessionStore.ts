@@ -19,6 +19,9 @@ export interface SessionStore {
   /** Returns the raw saved JSON, or null if the session does not exist. */
   get(uid: string, id: string): Promise<string | null>;
   put(uid: string, id: string, json: string): Promise<void>;
+  /** Sets a user-chosen title that overrides the derived one. */
+  rename(uid: string, id: string, title: string): Promise<boolean>;
+  delete(uid: string, id: string): Promise<void>;
 }
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -61,15 +64,20 @@ export class FirestoreSessionStore implements SessionStore {
 
   async list(uid: string): Promise<SessionListItem[]> {
     const snap = await this.sessions(uid)
-      .select("title", "savedAt")
+      .select("title", "customTitle", "savedAt")
       .orderBy("savedAt", "desc")
       .get();
     return snap.docs.map((d) => {
-      const { title, savedAt } = d.data() as {
+      const { title, customTitle, savedAt } = d.data() as {
         title?: string | null;
+        customTitle?: string | null;
         savedAt?: string | null;
       };
-      return { id: d.id, title: title ?? null, savedAt: savedAt ?? null };
+      return {
+        id: d.id,
+        title: customTitle ?? title ?? null,
+        savedAt: savedAt ?? null,
+      };
     });
   }
 
@@ -82,12 +90,30 @@ export class FirestoreSessionStore implements SessionStore {
 
   async put(uid: string, id: string, json: string): Promise<void> {
     const { title, savedAt } = summarize(json);
-    await this.sessions(uid).doc(id).set({
-      json,
-      title,
-      // Fall back to server time so unsaved-at sessions still sort.
-      savedAt: savedAt ?? new Date().toISOString(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    // Merge so a customTitle set via rename survives autosaves.
+    await this.sessions(uid).doc(id).set(
+      {
+        json,
+        title,
+        // Fall back to server time so unsaved-at sessions still sort.
+        savedAt: savedAt ?? new Date().toISOString(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
+
+  async rename(uid: string, id: string, title: string): Promise<boolean> {
+    const ref = this.sessions(uid).doc(id);
+    if (!(await ref.get()).exists) return false;
+    await ref.set(
+      { customTitle: title, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    return true;
+  }
+
+  async delete(uid: string, id: string): Promise<void> {
+    await this.sessions(uid).doc(id).delete();
   }
 }

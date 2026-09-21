@@ -63,6 +63,20 @@ export async function saveSession(
   });
 }
 
+export async function renameSession(id: string, title: string): Promise<void> {
+  const resp = await authFetch(sessionUrl(id), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!resp.ok) throw new Error(`rename ${resp.status}`);
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  const resp = await authFetch(sessionUrl(id), { method: "DELETE" });
+  if (!resp.ok) throw new Error(`delete ${resp.status}`);
+}
+
 export async function listSessions(): Promise<SessionListItem[]> {
   const resp = await authFetch(SESSIONS);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);

@@ -128,11 +128,27 @@ export function useSessionPersistence(
 
   async function newSession() {
     await flushCurrent("new");
+    startFresh();
+  }
+
+  /** Called after the current session was deleted: no flush, just reset. */
+  function discardCurrentSession() {
+    cancelPendingAutosave();
+    startFresh();
+  }
+
+  function startFresh() {
     setMessages([]);
     study.reset();
     replaceUrl("/");
     startNewSession();
   }
 
-  return { sessionIdRef, loadEpoch, loadSession, newSession };
+  return {
+    sessionIdRef,
+    loadEpoch,
+    loadSession,
+    newSession,
+    discardCurrentSession,
+  };
 }

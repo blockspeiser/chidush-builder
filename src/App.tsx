@@ -71,6 +71,11 @@ function StudyApp({ user }: { user: User }) {
             <SessionsButton
               currentId={session.sessionIdRef.current}
               onLoad={session.loadSession}
+              onDeleted={(id) => {
+                if (id === session.sessionIdRef.current) {
+                  session.discardCurrentSession();
+                }
+              }}
             />
             <AccountMenu user={user} />
           </div>

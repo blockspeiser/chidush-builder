@@ -42,5 +42,23 @@ export function sessionRoutes(store: SessionStore) {
     return c.json({ ok: true, id });
   });
 
+  app.patch("/:id", async (c) => {
+    const id = c.req.param("id");
+    if (!isValidSessionId(id)) return c.json({ error: "invalid id" }, 400);
+    const body = (await c.req.json().catch(() => null)) as { title?: unknown } | null;
+    const title = typeof body?.title === "string" ? body.title.trim() : "";
+    if (!title || title.length > 120) return c.json({ error: "title required (max 120 chars)" }, 400);
+    const found = await store.rename(c.get("uid"), id, title);
+    if (!found) return c.json({ error: "not found" }, 404);
+    return c.json({ ok: true, id, title });
+  });
+
+  app.delete("/:id", async (c) => {
+    const id = c.req.param("id");
+    if (!isValidSessionId(id)) return c.json({ error: "invalid id" }, 400);
+    await store.delete(c.get("uid"), id);
+    return c.json({ ok: true, id });
+  });
+
   return app;
 }
